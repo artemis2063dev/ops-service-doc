@@ -22,7 +22,7 @@
     <properties>
         <java.version>25</java.version>
         <!-- SonarCloud-Organization: hier deine echte Org-ID eintragen, sobald wir das einrichten -->
-        <sonar.organization>artemis2063dev</sonar.organization>
+        <sonar.organization>artemis2063dev-1</sonar.organization>
     </properties>
 
     <dependencies>
