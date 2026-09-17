@@ -40,7 +40,7 @@ public class TicketService {
 
         return ticketRepository.findAll()
                 .stream()
-                .map(TicketMapper::toDo)
+                .map(TicketMapper::toDto)
                 .toList();
     }
 
@@ -56,7 +56,7 @@ public class TicketService {
                         "GLPI-1001",
                         "Server Enterprise-01 Wartung",
                         "Geplantes Patching des vSphere-Clusters ausserhalb der Betriebszeiten",
-                        TicketStatus.Neu,
+                        TicketStatus.NEU,
                         "M. Scott",
                         SzenarioTyp.SERVER_WARTUNG,
                         LocalDateTime.now()
