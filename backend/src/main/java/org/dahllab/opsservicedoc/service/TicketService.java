@@ -28,10 +28,10 @@ public class TicketService {
         this.ticketRepository = ticketRepository;
     }
 
-    //
-    //
-    //
-    //
+    // Liefert alle Ticktes als DTOs zurück.
+    // Falls die Datenbank noch leer ist (z.B. beim allersten Start),
+    // lege ich einmalig Mock-Daten an -praktisch zum Testen ohne
+    // eigene Testdaten von Hand einfügen zu müssen.
     public List<TicketDto> getAlleTickets() {
         if (ticketRepository.count() == 0) {
             ticketRepository.saveAll(erzeugeMockTickets());
@@ -43,4 +43,36 @@ public class TicketService {
                 .map(TicketMapper::toDo)
                 .toList();
     }
+
+    // Erzeugt ein paar Beispiel-Tickets mit Star-Trek-Testdaten,
+    // passend zu den bisherigen Projekten.
+    // Bewusst als private Hilfsmethode innerhalb des Services gehalten,
+    // da sie aktuell nur hier gebraucht wird (KISS: keine unnötige
+    // eigene Klasse für einen einzigen Verwendungszweck).
+    private List<Ticket> erzeugeMockTickets() {
+        return List.of(
+                new Ticket(
+                        null,  //MongoDB generiert die ID automatisch beim Speichern
+                        "GLPI-1001",
+                        "Server Enterprise-01 Wartung",
+                        "Geplantes Patching des vSphere-Clusters ausserhalb der Betriebszeiten",
+                        TicketStatus.Neu,
+                        "M. Scott",
+                        SzenarioTyp.SERVER_WARTUNG,
+                        LocalDateTime.now()
+                ),
+                new Ticket(
+                        null,
+                        "GLPI-1002",
+                        "Backup-Check Enterprise-02",
+                        "Wöchentliche Kontrolle der Backup-Jobs.",
+                        TicketStatus.IN_BEARBEITUNG,
+                        "N. Uhura",
+                        SzenarioTyp.SERVER_WARTUNG,
+                        LocalDateTime.now()
+                )
+        );
+    }
+
 }
+
