@@ -1,5 +1,8 @@
+#general
 .idea/
 *.iml
+.env
+.env.local
 
 #backend
 /backend/.mvn
