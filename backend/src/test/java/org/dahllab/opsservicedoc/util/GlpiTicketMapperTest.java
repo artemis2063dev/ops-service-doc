@@ -12,6 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // Kein Spring-Kontext nötig, da GlpiTicketMapper eine reine, statische
 // Utility-Klasse ist, ich teste hier nur die Umwandlungslogik selbst,
@@ -104,8 +105,7 @@ class GlpiTicketMapperTest {
         // THEN: Ich kann das exakte "jetzt" nicht vorhersagen, prüfe aber,
         // dass der Fallback-Zeitpunkt zwischen meinen beiden Messungen liegt,
         // das bestätigt, dass wirklich LocalDateTime.now() verwendet wurde.
-        assertEquals(true,
-                !result.getErstelltAm().isBefore(vorDemAufruf)
+        assertTrue(!result.getErstelltAm().isBefore(vorDemAufruf)
                 && !result.getErstelltAm().isAfter(nachDemAufruf));
     }
 

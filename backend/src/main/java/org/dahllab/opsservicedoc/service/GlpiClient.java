@@ -19,14 +19,12 @@ public class GlpiClient {
     private final GlpiConfig glpiConfig;
     private final RestClient restClient;
 
-    public GlpiClient(GlpiConfig glpiConfig) {
+    public GlpiClient(GlpiConfig glpiConfig, RestClient restClient) {
         this.glpiConfig = glpiConfig;
         // RestClient: Spring Boot moderner HTTP-Client (Nachfolger von RestTemplate),
         // hier fest auf die GLPI-Basis-URL konfiguriert, damit wir bei jedem
         // Aufruf nicht die volle URL wiederholen müssen (DRY).
-        this.restClient = RestClient.builder();
-                .baseUrl(glpiConfig.getApiUrl())
-                .build();
+        this.restClient = restClient;
     }
 
     // Schritt 1 des GLPI-Auth-Flows: fragt einen Session-Token an.
@@ -60,7 +58,7 @@ public class GlpiClient {
         return restClient.get()
                 .uri("/Ticket")
                 .header("App-Token", glpiConfig.getAppToken())
-                .header("Session-Token", sessionToken)
+                .header("Session-Token", session)
                 .retrieve()
                 .body(List.class);
     }

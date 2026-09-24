@@ -71,6 +71,11 @@
             <artifactId>spring-boot-starter-fallback-page</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <!-- Bean Validation (Jakarta Validation): ermöglicht @Valid, @NotBlank, @NotNull etc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
