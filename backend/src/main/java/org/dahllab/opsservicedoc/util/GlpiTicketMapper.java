@@ -54,7 +54,7 @@ public class GlpiTicketMapper {
 
     private static String extractTitel(Map<String, Object> glpiTicket) {
         Object name = glpiTicket.get("name");
-        return name != null ? name.toString() : null;
+        return name != null ? name.toString() : "";
     }
 
     private static String extractBeschreibung(Map<String, Object> glpiTicket) {

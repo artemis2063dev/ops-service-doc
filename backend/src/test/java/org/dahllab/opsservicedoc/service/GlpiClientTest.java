@@ -54,13 +54,13 @@ class GlpiClientTest {
         // 1. Erwarteter Request: initSession mit den korrekten Headern
         mockServer.expect(requestTo("http://test-glpi/api.php/v1/initSession"))
                 .andExpect(header("App-Token","test-app-token"))
-                .andExpect(header("Authrization", "user_token test-user-token"))
+                .andExpect(header("Authorization", "user_token test-user-token"))
                 .andRespond(withSuccess("{\"session\":\"abc123\"}", MediaType.APPLICATION_JSON));
 
         // 2. Erwarteter Request: Ticket-Abruf MIT dem Session-Token aus Schritt 1
         mockServer.expect(requestTo("http://test-glpi/api.php/v1/Ticket"))
                 .andExpect(header("Session-Token","abc123"))
-                .andRespond(withSuccess("[{\"id\":1,\":\"Testticket\"}]", MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess("[{\"id\":1,\"name\":\"Testticket\"}]", MediaType.APPLICATION_JSON));
 
         // WHEN:
         List<Map<String, Object>> result = glpiClient.getAllGlpiTickets();

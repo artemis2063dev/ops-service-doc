@@ -1,7 +1,9 @@
 package org.dahllab.opsservicedoc.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
 
 
 // @ConfigurationProperties: bindet alle Properties mit dem mit dem Prefix "glpi."
@@ -43,6 +45,18 @@ public class GlpiConfig {
 
     public void setUserToken(String userToken) {
         this.userToken = userToken;
+    }
+
+    // Stellt den fertig konfigurierten RestClient als Spring-Bean bereit.
+    // Wird automatisch in GlpiClient injiziert (Constructor Injection).
+    // Im Test wird stattdessen manuell ein RestClient mit
+    // MockRestServiceServer gebaut, ohne dass diese Bean-Methode
+    // überhaupt aufgerufen wird.
+    @Bean
+    public RestClient glpiRestClient() {
+        return RestClient.builder()
+                .baseUrl(getApiUrl())
+                .build();
     }
 
 }

@@ -44,7 +44,7 @@ class GlpiTicketMapperTest {
         assertEquals("Geplantes Patching ausserhalb der Betriebszeiten.", result.getBeschreibung());
         assertEquals(TicketStatus.IN_BEARBEITUNG, result.getStatus());
         assertEquals(SzenarioTyp.SERVER_WARTUNG, result.getSzenarioTyp());
-        assertEquals(LocalDateTime.of(2026, 9, 22, 15, 0), result.getErstelltAm());
+        assertEquals(LocalDateTime.of(2026, 9, 22, 9,15, 0), result.getErstelltAm());
 
     }
 
