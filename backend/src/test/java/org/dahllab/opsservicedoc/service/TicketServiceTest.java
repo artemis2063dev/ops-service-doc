@@ -14,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -176,5 +178,35 @@ class TicketServiceTest {
                 java.util.NoSuchElementException.class,
                 () -> ticketService.updateTicket("unbekannt", beliebigeDaten)
         );
+    }
+
+    // Neues Mock-Feld für den GLPI-Client (zusätzlich zum bestehenden ticketRepository-Mock).
+    @Mock
+    private GlpiClient glpiClient;
+
+    @Test
+    @DisplayName("GIVEN GLPI-Tickets WHEN syncFromGlpi aufgerufen wird THEN werden sie gemappt und gespeichert")
+    void syncFromGlpi_mapptUndSpeichertGlpiTickets() {
+
+        // GIVEN:
+        // Ich simuliere, was der GlpiClient normalerweise von der echten API bekäme.
+        Map<String, Object> glpiTicket = new HashMap<>();
+        glpiTicket.put("id", 2001);
+        glpiTicket.put("name", "GLPI Ticket");
+        glpiTicket.put("status", 1);
+
+        when(glpiClient.getAllGlpiTickets()).thenReturn(List.of(glpiTicket));
+
+        Ticket gespeichertesTicket = new Ticket("1", "2001", "GLPI Ticket", "",
+                TicketStatus.NEU, "Nicht zugewiesen", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
+        when(ticketRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(List.of(gespeichertesTicket));
+
+        // WHEN:
+        List<TicketDto> ergebnis = ticketService.syncFromGlpi();
+
+        // THEN:
+        assertEquals(1, ergebnis.size());
+        assertEquals("GLPI Ticket", ergebnis.get(0).titel());
     }
 }

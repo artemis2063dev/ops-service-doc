@@ -12,9 +12,6 @@ services:
     volumes:
       - mongo_data:/data/db           # Daten bleiben erhalten, auch wenn der Container neu gestartet wird
 
-volumes:
-  mongo_data:
-
   glpi:
     image: "glpi/glpi:latest"
     container_name: ops-service-doc-glpi

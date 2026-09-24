@@ -5,22 +5,39 @@ import org.dahllab.opsservicedoc.model.SzenarioTyp;
 import org.dahllab.opsservicedoc.model.Ticket;
 import org.dahllab.opsservicedoc.model.TicketStatus;
 import org.dahllab.opsservicedoc.repository.TicketRepository;
+import org.dahllab.opsservicedoc.util.GlpiTicketMapper;
 import org.dahllab.opsservicedoc.util.TicketMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
+// @Service: markiert diese Klasse als Spring-verwaltete Business-Logik-Komponente.
+// Enthält die eigentliche Anwendungslogik - der Controller soll nur
+// HTTP-Anfragen entgegennehmen/weiterleiten, nicht selbst Logik enthalten
+// (Single Responsibility Principle).
 @Service
 public class TicketService {
 
+    // Zugriff auf die Datenbank über das Repository.
     private final TicketRepository ticketRepository;
+    // Zugriff auf die GLPI-API, über den ich echte Tickets abrufe.
+    private final GlpiClient glpiClient;
 
-    public TicketService(TicketRepository ticketRepository) {
+    // Konstruktor-Injection statt @Autowired auf den Feldern: macht die
+    // Abhängigkeiten unveränderlich und explizit sichtbar, erleichtert
+    // außerdem das Testen mit Mockito.
+    public TicketService(TicketRepository ticketRepository, GlpiClient glpiClient) {
         this.ticketRepository = ticketRepository;
+        this.glpiClient = glpiClient;
     }
 
+    // Liefert alle Tickets als DTOs zurück.
+    // Falls die Datenbank noch leer ist (z.B. beim allerersten Start),
+    // lege ich einmalig Mock-Daten an - praktisch zum Testen ohne
+    // eigene Testdaten von Hand einfügen zu müssen.
     public List<TicketDto> getAllTickets() {
         if (ticketRepository.count() == 0) {
             ticketRepository.saveAll(erzeugeMockTickets());
@@ -45,7 +62,7 @@ public class TicketService {
 
     // Legt ein neues Ticket an. Der eingehende TicketDto enthält noch
     // keine ID (die generiert MongoDB automatisch) und kein erstelltAm
-    // (das setzen wir hier zentral auf "jetzt") - der Aufrufer muss sich
+    // (das setze ich hier zentral auf "jetzt") - der Aufrufer muss sich
     // also nicht selbst um diese technischen Details kümmern.
     public TicketDto createTicket(TicketDto neuesTicket) {
         Ticket ticket = new Ticket(
@@ -63,16 +80,16 @@ public class TicketService {
         return TicketMapper.toDto(gespeichertesTicket);
     }
 
-    // Aktualisiert ein bestehendes Ticket. Prüft zuerst, ob die ID existiert
+    // Aktualisiert ein bestehendes Ticket. Prüfe zuerst, ob die ID existiert
     // (sonst NoSuchElementException, wie schon bei getTicketById), und
-    // überschreibt dann alle Felder außer der ID selbst - die ID bleibt
-    // erhalten, damit wir dasselbe Dokument in MongoDB aktualisieren statt
+    // überschreibe dann alle Felder außer der ID selbst - die ID bleibt
+    // erhalten, damit ich dasselbe Dokument in MongoDB aktualisiere statt
     // versehentlich ein neues anzulegen.
     //
     // BEKANNTE EINSCHRÄNKUNG: glpiTicketId wird hier auf null gesetzt und
     // geht damit bei jedem Update verloren. Muss angepasst werden, sobald
-    // der GLPI-Connector steht - dann bestehende glpiTicketId aus der DB
-    // laden und beibehalten statt zu überschreiben.
+    // ich eine Upsert-Logik für den GLPI-Sync baue - dann bestehende
+    // glpiTicketId aus der DB laden und beibehalten statt zu überschreiben.
     public TicketDto updateTicket(String id, TicketDto aktualisiertesTicket) {
         if (!ticketRepository.existsById(id)) {
             throw new NoSuchElementException("Ticket mit ID " + id + " nicht gefunden");
@@ -93,6 +110,34 @@ public class TicketService {
         return TicketMapper.toDto(gespeichertesTicket);
     }
 
+    // Holt alle Tickets von GLPI, wandle sie über den GlpiTicketMapper in
+    // mein eigenes Ticket-Model um, und speichere sie in MongoDB.
+    //
+    // WICHTIGE EINSCHRÄNKUNG (dokumentiert für spätere Erweiterung):
+    // Aktuell wird bei jedem Sync-Aufruf ein NEUES Ticket angelegt, auch
+    // wenn ein Ticket mit derselben glpiTicketId schon existiert - es gibt
+    // noch keine "Upsert"-Logik (prüfen: existiert schon, dann updaten statt
+    // neu anlegen). Für den jetzigen Stand (manueller Sync, überschaubare
+    // Ticketanzahl) ist das unkritisch, aber ein klarer nächster Ausbauschritt.
+    public List<TicketDto> syncFromGlpi() {
+        List<Map<String, Object>> glpiTickets = glpiClient.getAllGlpiTickets();
+
+        List<Ticket> neueTickets = glpiTickets.stream()
+                .map(GlpiTicketMapper::toTicket)
+                .toList();
+
+        List<Ticket> gespeicherteTickets = ticketRepository.saveAll(neueTickets);
+
+        return gespeicherteTickets.stream()
+                .map(TicketMapper::toDto)
+                .toList();
+    }
+
+    // Erzeugt ein paar Beispiel-Tickets mit Star-Trek-Testdaten,
+    // passend zu meinen bisherigen Bootcamp-Projekten.
+    // Bewusst als private Hilfsmethode innerhalb des Service gehalten,
+    // da sie aktuell nur hier gebraucht wird (KISS: keine unnötige
+    // eigene Klasse für einen einzigen Verwendungszweck).
     private List<Ticket> erzeugeMockTickets() {
         return List.of(
                 new Ticket(null, "GLPI-1001", "Server Enterprise-01 Wartung",

@@ -63,4 +63,14 @@ public class TicketController {
     public TicketDto updateTicket(@PathVariable String id, @Valid @RequestBody TicketDto aktualisiertesTicket) {
         return ticketService.updateTicket(id, aktualisiertesTicket);
     }
+
+    // POST /api/tickets/sync-glpi - stößt den manuellen Import aus GLPI an.
+    // Bewusst als eigener Endpoint statt automatisch beim Start: so behalte
+    // ich die Kontrolle, WANN der Sync passiert (relevant, da jeder Aufruf
+    // aktuell neue Tickets anlegt statt zu aktualisieren, siehe Kommentar
+    // in TicketService.syncFromGlpi()).
+    @PostMapping("/sync-glpi")
+    public List<TicketDto> syncFromGlpi() {
+        return ticketService.syncFromGlpi();
+    }
 }
