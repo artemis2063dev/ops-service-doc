@@ -48,16 +48,16 @@ class LoginControllerTest {
         // Er sagt MockMvc "tu so, als wäre dieser Request bereits erfolgreich
         // über OAuth2 eingeloggt, und die Attribute des Users sind die, die wir hier übergeben".
         // Dadurch müssen wir NICHT wirklich gegen GitHub authentifizieren, um den Test zu schreiben.
-        var ergebnis = mockMvc.perform(
+        var result = mockMvc.perform(
                 get("/api/auth/me")
                         .with(oauth2Login().attributes(attrs -> attrs.putAll(fakeGithubAttribute)))
         );
 
         // THEN:
-        // Wir prüfen zwei Dinge:
+        // Ich prüfe zwei Dinge:
         // 1. Der HTTP-Status muss 200 OK sein (da der User ja "eingeloggt" ist)
         // 2. Der zurückgegebene Text muss exakt unserem erwarteten Usernamen entsprechen
-        ergebnis
+        result
                 .andExpect(status().isOk())
                 .andExpect(content().string(erwarteterUsername));
     }
@@ -74,7 +74,7 @@ class LoginControllerTest {
         // Wir simulieren denselben Request wie oben, aber diesmal OHNE
         // simulierten Login - also genau der Zustand, den ein echter,
         // nicht angemeldeter Nutzer hätte.
-        var ergebnis = mockMvc.perform(
+        var result = mockMvc.perform(
                 get("/api/auth/me")
         );
 
@@ -82,7 +82,7 @@ class LoginControllerTest {
         // Da /api/auth/me in der SecurityConfig als ".authenticated()" markiert ist,
         // UND wir dort den authenticationEntryPoint auf HttpStatus.UNAUTHORIZED gesetzt haben,
         // erwarten wir hier exakt einen 401-Statuscode (nicht z.B. eine Weiterleitung zu einer Login-Seite).
-        ergebnis
+        result
                 .andExpect(status().isUnauthorized());
     }
 }
