@@ -87,9 +87,9 @@ public class TicketService {
     // versehentlich ein neues anzulegen.
     //
     // BEKANNTE EINSCHRÄNKUNG: glpiTicketId wird hier auf null gesetzt und
-    // geht damit bei jedem Update verloren. Muss angepasst werden, sobald
-    // ich eine Upsert-Logik für den GLPI-Sync baue - dann bestehende
-    // glpiTicketId aus der DB laden und beibehalten statt zu überschreiben.
+    // geht damit bei jedem manuellen Update verloren. Betrifft nur den
+    // Fall, dass ein per Sync importiertes Ticket danach manuell über
+    // PUT bearbeitet wird - für den jetzigen Projekt-Scope unkritisch.
     public TicketDto updateTicket(String id, TicketDto aktualisiertesTicket) {
         if (!ticketRepository.existsById(id)) {
             throw new NoSuchElementException("Ticket mit ID " + id + " nicht gefunden");
@@ -113,24 +113,39 @@ public class TicketService {
     // Holt alle Tickets von GLPI, wandle sie über den GlpiTicketMapper in
     // mein eigenes Ticket-Model um, und speichere sie in MongoDB.
     //
-    // WICHTIGE EINSCHRÄNKUNG (dokumentiert für spätere Erweiterung):
-    // Aktuell wird bei jedem Sync-Aufruf ein NEUES Ticket angelegt, auch
-    // wenn ein Ticket mit derselben glpiTicketId schon existiert - es gibt
-    // noch keine "Upsert"-Logik (prüfen: existiert schon, dann updaten statt
-    // neu anlegen). Für den jetzigen Stand (manueller Sync, überschaubare
-    // Ticketanzahl) ist das unkritisch, aber ein klarer nächster Ausbauschritt.
+    // UPSERT-LOGIK: Für jedes GLPI-Ticket prüfe ich zuerst, ob bereits ein
+    // Ticket mit derselben glpiTicketId existiert (anhand von
+    // findByGlpiTicketId). Falls ja, aktualisiere ich das bestehende Ticket
+    // (behalte seine MongoDB-ID), statt ein Duplikat anzulegen. Falls nein,
+    // lege ich ein neues Ticket an. So kann ich den Sync beliebig oft
+    // wiederholen, ohne dass sich die Ticketliste bei jedem Aufruf verdoppelt.
     public List<TicketDto> syncFromGlpi() {
         List<Map<String, Object>> glpiTickets = glpiClient.getAllGlpiTickets();
 
-        List<Ticket> neueTickets = glpiTickets.stream()
-                .map(GlpiTicketMapper::toTicket)
+        List<Ticket> gespeicherteTickets = glpiTickets.stream()
+                .map(this::upsertGlpiTicket)
                 .toList();
-
-        List<Ticket> gespeicherteTickets = ticketRepository.saveAll(neueTickets);
 
         return gespeicherteTickets.stream()
                 .map(TicketMapper::toDto)
                 .toList();
+    }
+
+    // Wandelt ein rohes GLPI-Ticket in mein Model um und speichert es -
+    // entweder als Update eines bestehenden Tickets (gleiche glpiTicketId)
+    // oder als komplett neues Ticket.
+    private Ticket upsertGlpiTicket(Map<String, Object> glpiTicket) {
+        Ticket neuesTicket = GlpiTicketMapper.toTicket(glpiTicket);
+
+        return ticketRepository.findByGlpiTicketId(neuesTicket.getGlpiTicketId())
+                .map(bestehendesTicket -> {
+                    // Bestehendes Ticket gefunden: MongoDB-ID des bestehenden
+                    // Dokuments übernehmen, damit save() es AKTUALISIERT statt
+                    // ein neues Dokument anzulegen.
+                    neuesTicket.setId(bestehendesTicket.getId());
+                    return ticketRepository.save(neuesTicket);
+                })
+                .orElseGet(() -> ticketRepository.save(neuesTicket));
     }
 
     // Erzeugt ein paar Beispiel-Tickets mit Star-Trek-Testdaten,

@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -46,10 +47,10 @@ class TicketServiceTest {
         Ticket ticket1 = new Ticket("1", "GLPI-1001", "Server-Wartung", "Beschreibung",
                 TicketStatus.NEU, "M.Scott", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
         Ticket ticket2 = new Ticket("2", "GLPI-1002", "Backup-Check", "Beschreibung",
-                TicketStatus.IN_BEARBEITUNG, "N. Uhura",  SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
+                TicketStatus.IN_BEARBEITUNG, "N. Uhura", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
 
         when(ticketRepository.count()).thenReturn(0L);
-        when(ticketRepository.findAll()).thenReturn(List.of(ticket1,ticket2));
+        when(ticketRepository.findAll()).thenReturn(List.of(ticket1, ticket2));
 
         // WHEN: Ich rufe die zu testende Methode auf.
         List<TicketDto> result = ticketService.getAllTickets();
@@ -69,7 +70,7 @@ class TicketServiceTest {
 
         // GIVEN: Die Datenbank enthält bereits ein Ticket (count() > 0).
         Ticket vorhandenesTicket = new Ticket("1", "GLPI-1001", "Server-Wartung", "Beschreibung",
-                TicketStatus.NEU, "M.Scott",  SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
+                TicketStatus.NEU, "M.Scott", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
 
         when(ticketRepository.count()).thenReturn(1L);
         when(ticketRepository.findAll()).thenReturn(List.of(vorhandenesTicket));
@@ -94,10 +95,10 @@ class TicketServiceTest {
         when(ticketRepository.findById("1")).thenReturn(java.util.Optional.of(ticket));
 
         // WHEN:
-        TicketDto ergebnis = ticketService.getTicketById("1");
+        TicketDto result = ticketService.getTicketById("1");
 
         // THEN:
-        assertEquals("Server-Wartung", ergebnis.titel());
+        assertEquals("Server-Wartung", result.titel());
     }
 
     @Test
@@ -132,13 +133,13 @@ class TicketServiceTest {
         when(ticketRepository.save(org.mockito.ArgumentMatchers.any(Ticket.class))).thenReturn(gespeichertesTicket);
 
         // WHEN:
-        TicketDto ergebnis = ticketService.createTicket(neuesTicketDto);
+        TicketDto result = ticketService.createTicket(neuesTicketDto);
 
         // THEN:
         // Die zurückgegebene ID stammt aus dem simulierten Speichervorgang,
         // und der Titel wurde korrekt übernommen.
-        assertEquals("1", ergebnis.id());
-        assertEquals("Neues Ticket", ergebnis.titel());
+        assertEquals("1", result.id());
+        assertEquals("Neues Ticket", result.titel());
     }
 
     @Test
@@ -156,11 +157,11 @@ class TicketServiceTest {
         when(ticketRepository.save(org.mockito.ArgumentMatchers.any(Ticket.class))).thenReturn(gespeichertesTicket);
 
         // WHEN:
-        TicketDto ergebnis = ticketService.updateTicket("1", aktualisierteDaten);
+        TicketDto result = ticketService.updateTicket("1", aktualisierteDaten);
 
         // THEN:
-        assertEquals("Geänderter Titel", ergebnis.titel());
-        assertEquals(TicketStatus.GELOEST, ergebnis.status());
+        assertEquals("Geänderter Titel", result.titel());
+        assertEquals(TicketStatus.GELOEST, result.status());
     }
 
     @Test
@@ -185,28 +186,62 @@ class TicketServiceTest {
     private GlpiClient glpiClient;
 
     @Test
-    @DisplayName("GIVEN GLPI-Tickets WHEN syncFromGlpi aufgerufen wird THEN werden sie gemappt und gespeichert")
-    void syncFromGlpi_mapptUndSpeichertGlpiTickets() {
+    @DisplayName("GIVEN ein neues GLPI-Ticket WHEN syncFromGlpi aufgerufen wird THEN wird es neu angelegt")
+    void syncFromGlpi_legtNeuesTicketAn_wennNochNichtVorhanden() {
 
         // GIVEN:
-        // Ich simuliere, was der GlpiClient normalerweise von der echten API bekäme.
         Map<String, Object> glpiTicket = new HashMap<>();
         glpiTicket.put("id", 2001);
         glpiTicket.put("name", "GLPI Ticket");
         glpiTicket.put("status", 1);
 
         when(glpiClient.getAllGlpiTickets()).thenReturn(List.of(glpiTicket));
+        // Kein bestehendes Ticket mit dieser glpiTicketId gefunden.
+        when(ticketRepository.findByGlpiTicketId("2001")).thenReturn(java.util.Optional.empty());
 
         Ticket gespeichertesTicket = new Ticket("1", "2001", "GLPI Ticket", "",
                 TicketStatus.NEU, "Nicht zugewiesen", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
-        when(ticketRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
-                .thenReturn(List.of(gespeichertesTicket));
+        when(ticketRepository.save(org.mockito.ArgumentMatchers.any(Ticket.class)))
+                .thenReturn(gespeichertesTicket);
 
         // WHEN:
-        List<TicketDto> ergebnis = ticketService.syncFromGlpi();
+        List<TicketDto> result = ticketService.syncFromGlpi();
 
         // THEN:
-        assertEquals(1, ergebnis.size());
-        assertEquals("GLPI Ticket", ergebnis.get(0).titel());
+        assertEquals(1, result.size());
+        assertEquals("GLPI Ticket", result.get(0).titel());
     }
+
+    @Test
+    @DisplayName("GIVEN ein bereits importiertes GLPI-Ticket WHEN syncFromGlpi erneut aufgerufen wird THEN wird das bestehende Ticket aktualisiert statt dupliziert")
+    void syncFromGlpi_aktualisiertBestehendesTicket_wennGlpiTicketIdSchonExistiert() {
+
+        // GIVEN:
+        Map<String, Object> glpiTicket = new HashMap<>();
+        glpiTicket.put("id", 2001);
+        glpiTicket.put("name", "Geänderter Titel");
+        glpiTicket.put("status", 5); // jetzt GELOEST statt NEU
+
+        when(glpiClient.getAllGlpiTickets()).thenReturn(List.of(glpiTicket));
+
+        // Es existiert bereits ein Ticket mit dieser glpiTicketId (aus einem früheren Sync).
+        Ticket bestehendesTicket = new Ticket("bestehende-mongo-id", "2001", "Alter Titel", "",
+                TicketStatus.NEU, "Nicht zugewiesen", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
+        when(ticketRepository.findByGlpiTicketId("2001")).thenReturn(java.util.Optional.of(bestehendesTicket));
+
+        Ticket aktualisiertesTicket = new Ticket("bestehende-mongo-id", "2001", "Geänderter Titel", "",
+                TicketStatus.GELOEST, "Nicht zugewiesen", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now());
+        when(ticketRepository.save(org.mockito.ArgumentMatchers.any(Ticket.class)))
+                .thenReturn(aktualisiertesTicket);
+
+        // WHEN:
+        List<TicketDto> result = ticketService.syncFromGlpi();
+
+        // THEN:
+        // Genau EIN Ticket im Ergebnis (kein Duplikat), mit den aktualisierten Werten.
+        assertEquals(1, result.size());
+        assertEquals("Geänderter Titel", result.get(0).titel());
+        assertEquals(TicketStatus.GELOEST, result.get(0).status());
+    }
+
 }
