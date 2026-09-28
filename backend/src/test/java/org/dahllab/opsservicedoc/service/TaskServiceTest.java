@@ -60,7 +60,7 @@ class TaskServiceTest {
         // GIVEN: das Repository liefert eine Task zu "ticket-1"
         Task task = new Task("1", "ticket-1", "Backup prüfen", "Logs checken",
                 LocalDateTime.now(), LocalDate.now(), null, TaskStatus.OFFEN);
-        when(taskRepository.findByTicketId("Ticket-1")).thenReturn(List.of(task));
+        when(taskRepository.findByTicketId("ticket-1")).thenReturn(List.of(task));
 
         // WHEN: ich frage gezielt nach Tasks zu "ticket-1"
         List<TaskDto> result = taskService.getTasksByTicketId("ticket-1");
@@ -70,8 +70,8 @@ class TaskServiceTest {
         assertEquals("ticket-1", result.get(0).ticketId());
     }
 
-    //
-    //
+    // Prüfe den Erfolgsfall von getTaskById(): existiert die ID, bekomme
+    // ich das passende DTO zurück.
     @Test
     void getTaskById_gibtTasks_wennIdExistiert() {
         // GIVEN:
