@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // Security (oauth2Login()) und echter MongoDB-Anbindung.
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class TaskControllerTest {
 
     @Autowired
