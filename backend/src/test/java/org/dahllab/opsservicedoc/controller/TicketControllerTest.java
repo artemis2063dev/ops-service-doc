@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TicketControllerTest {
 
     // Bereits von Spring Boot fertig konfigurierte Jackson-Instanz -
-    // wir bauen keine eigene, um Inkonsistenzen mit der echten App-Konfiguration
+    // ich baue keine eigene, um Inkonsistenzen mit der echten App-Konfiguration
     // zu vermeiden (DRY: eine zentrale ObjectMapper-Konfiguration für die ganze App).
     @Autowired
     private ObjectMapper objectMapper;
@@ -90,12 +90,12 @@ class TicketControllerTest {
         when(ticketService.getTicketById("1")).thenReturn(ticketDto);
 
         // WHEN:
-        var ergebnis = mockMvc.perform(
+        var result = mockMvc.perform(
                 get("/api/tickets/1").with(oauth2Login())
         );
 
         // THEN:
-        ergebnis
+        result
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.titel").value("Server-Wartung"));
     }
@@ -117,7 +117,7 @@ class TicketControllerTest {
         // objectMapper ist die von Spring Boot bereits fertig konfigurierte
         // Bean (siehe @Autowired-Feld oben in der Klasse) - wandelt unser
         // TicketDto-Objekt in einen JSON-String für den Request-Body um.
-        var ergebnis = mockMvc.perform(
+        var result = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/tickets")
                         .with(oauth2Login())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -126,7 +126,7 @@ class TicketControllerTest {
 
         // THEN:
         // 201 Created, wie im Controller mit @ResponseStatus(HttpStatus.CREATED) festgelegt.
-        ergebnis
+        result
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("1"));
     }
@@ -143,7 +143,7 @@ class TicketControllerTest {
                 .thenReturn(aktualisiertesTicket);
 
         // WHEN:
-        var ergebnis = mockMvc.perform(
+        var result = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/tickets/1")
                         .with(oauth2Login())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -151,7 +151,7 @@ class TicketControllerTest {
         );
 
         // THEN:
-        ergebnis
+        result
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.titel").value("Geänderter Titel"));
     }

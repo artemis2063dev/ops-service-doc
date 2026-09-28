@@ -48,7 +48,7 @@ public class GlpiClient {
     //
     // Rückgabetyp bewusst List<Map<String, Object>> statt eines eigenen
     // GLPI-DTOs: GLPI liefert ein generisches JSON-Array zurück, dessen
-    // Feldnamen wir erst im GlpiTicketMapper gezielt auf mein eigenes
+    // Feldnamen ich erst im GlpiTicketMapper gezielt auf mein eigenes
     // Ticket-Model abbilden (KISS: keine zusätzliche Zwischenklasse nur
     // für die rohen GLPI-Rückgabedaten).
     @SuppressWarnings("unchecked")
