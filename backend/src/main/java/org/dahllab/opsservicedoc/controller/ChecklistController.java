@@ -2,6 +2,7 @@ package org.dahllab.opsservicedoc.controller;
 
 import jakarta.validation.Valid;
 import org.dahllab.opsservicedoc.dto.ChecklistDto;
+import org.dahllab.opsservicedoc.dto.CreateChecklistFromTemplateRequest;
 import org.dahllab.opsservicedoc.service.ChecklistService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +41,15 @@ public class ChecklistController {
     @ResponseStatus(HttpStatus.CREATED)
     public ChecklistDto createChecklist(@Valid @RequestBody ChecklistDto checklistDto) {
         return checklistService.createChecklist(checklistDto);
+    }
+
+    // POST /api/checklists/from-template - legt eine neue Checkliste
+    // anhand einer vorhandenen ChecklistTemplate an, statt die Items
+    // manuell im Request mitzuschicken.
+    @PostMapping("/from-template")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ChecklistDto createChecklistFromTemplate(@Valid @RequestBody CreateChecklistFromTemplateRequest request) {
+        return checklistService.createChecklistFromTemplate(request.ticketId(), request.templateId());
     }
 
     // PUT /api/checklists/{id} - aktualisiert Titel und Items, z.B. um
