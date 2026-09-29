@@ -45,7 +45,7 @@ public class SecurityConfig {
 
                 // Was passiert, wenn ein NICHT eingeloggter User auf eine geschützte Route zugreift?
                 // Standardmäßig würde Spring Security versuchen, auf eine Login-Seite umzuleiten (HTML-Verhalten).
-                // Da wir eine REST-API sind, wollen wir stattdessen einfach einen 401-Statuscode zurückgeben,
+                // Da ich eine REST-API ist, will ich stattdessen einfach einen 401-Statuscode zurückgeben,
                 // den das Frontend dann selbst auswerten kann (z.B. um zur Login-Seite zu routen)
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(
@@ -54,7 +54,7 @@ public class SecurityConfig {
 
                 // Aktiviert den OAuth2-Login-Flow (GitHub, wie in application.properties konfiguriert).
                 // defaultSuccessUrl: wohin der Browser nach erfolgreichem Login weitergeleitet wird -
-                // hier zurück zu deinem laufenden React-Frontend
+                // hier zurück zu meinem laufenden React-Frontend
                 .oauth2Login(o -> o.defaultSuccessUrl("http://localhost:5173/"))
 
                 // Wohin nach dem Logout weitergeleitet wird - ebenfalls zurück zum Frontend

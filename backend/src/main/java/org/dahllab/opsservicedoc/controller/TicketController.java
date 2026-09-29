@@ -32,11 +32,10 @@ public class TicketController {
     }
 
     // GET /api/tickets/{id} - liefert genau EIN Ticket anhand seiner ID.
-    // Falls die ID nicht existiert, wirft der Service eine Exception,
-    // die wir hier (noch) nicht extra abfangen - Spring gibt in dem Fall
-    // automatisch einen 500er zurück. Ein sauberes 404-Handling (z.B. mit
-    // @RestControllerAdvice) wäre ein sinnvoller nächster Ausbauschritt,
-    // aber laut YAGNI erst dann bauen, wenn er tatsächlich gebraucht wird.
+    // Falls die ID nicht existiert, wirft der Service eine
+    // NoSuchElementException, die der globale GlobalExceptionHandler
+    // abfängt und sauber in 404 Not Found übersetzt (siehe
+    // exception/GlobalExceptionHandler.java).
     @GetMapping("/{id}")
     public TicketDto getTicketById(@PathVariable String id) {
         return ticketService.getTicketById(id);
