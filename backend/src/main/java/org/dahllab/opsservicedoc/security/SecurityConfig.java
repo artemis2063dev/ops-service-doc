@@ -1,5 +1,6 @@
 package org.dahllab.opsservicedoc.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,15 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 // @EnableWebSecurity: aktiviert Spring Security für die gesamte Web-Anwendung
 @EnableWebSecurity
 public class SecurityConfig {
+
+    // URL meines Frontends, konfigurierbar über die Umgebungsvariable
+    // FRONTEND_URL (siehe application.properties), mit localhost:5173
+    // als Fallback für die lokale Entwicklung. So bleibt der Code
+    // unverändert, wenn ich später auf einem echten Server hoste -
+    // ich muss dann nur die Umgebungsvariable setzen, statt hier im
+    // Code eine feste URL zu hinterlegen (Review-Hinweis von Mahir).
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     // @Bean: diese Methode liefert ein Objekt, das Spring verwaltet (hier die zentrale Security-Konfiguration)
     // SecurityFilterChain: die Kette von Filtern, die JEDE eingehende HTTP-Anfrage durchläuft,
@@ -55,10 +65,10 @@ public class SecurityConfig {
                 // Aktiviert den OAuth2-Login-Flow (GitHub, wie in application.properties konfiguriert).
                 // defaultSuccessUrl: wohin der Browser nach erfolgreichem Login weitergeleitet wird -
                 // hier zurück zu meinem laufenden React-Frontend
-                .oauth2Login(o -> o.defaultSuccessUrl("http://localhost:5173/"))
+                .oauth2Login(o -> o.defaultSuccessUrl(frontendUrl + "/"))
 
                 // Wohin nach dem Logout weitergeleitet wird - ebenfalls zurück zum Frontend
-                .logout(logout -> logout.logoutSuccessUrl("http://localhost:5173/"));
+                .logout(logout -> logout.logoutSuccessUrl(frontendUrl + "/"));
 
         // Baut die konfigurierte Filterkette und gibt sie an Spring zurück
         return http.build();
