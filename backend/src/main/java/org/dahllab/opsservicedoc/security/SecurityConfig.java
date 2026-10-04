@@ -66,7 +66,7 @@ public class SecurityConfig {
                 // Aktiviert den OAuth2-Login-Flow (GitHub, wie in application.properties konfiguriert).
                 // defaultSuccessUrl: wohin der Browser nach erfolgreichem Login weitergeleitet wird -
                 // hier zurück zu meinem laufenden React-Frontend
-                .oauth2Login(o -> o.defaultSuccessUrl(frontendUrl + "/"))
+                .oauth2Login(o -> o.defaultSuccessUrl(frontendUrl + "/", true))
 
                 // Wohin nach dem Logout weitergeleitet wird - ebenfalls zurück zum Frontend
                 .logout(logout -> logout.logoutSuccessUrl(frontendUrl + "/"));

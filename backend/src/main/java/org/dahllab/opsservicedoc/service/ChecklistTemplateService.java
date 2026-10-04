@@ -32,31 +32,55 @@ public class ChecklistTemplateService {
         return ChecklistTemplateMapper.toDto(result);
     }
 
-    // POST /api/checklist-templates - legt eine neue Vorlage an.
+    // POST /api/checklist-templates - legt eine neue Vorlage an. Eine
+    // über die API neu angelegte Vorlage ist NIE eine Standard-Vorlage -
+    // standard wird hier hart auf false gesetzt und ein eventuell im
+    // Request mitgeschicktes templateDto.standard() bewusst ignoriert,
+    // damit niemand sich selbst eine unlöschbare Vorlage anlegen kann.
+    // Nur mein ChecklistTemplateSeeder setzt beim Start standard=true.
     public ChecklistTemplateDto createTemplate(ChecklistTemplateDto templateDto) {
-        ChecklistTemplate neueTemplate = new ChecklistTemplate(null, templateDto.name(), templateDto.itemBeschreibungen());
+        ChecklistTemplate neueTemplate = new ChecklistTemplate(
+                null, templateDto.name(), templateDto.itemBeschreibungen(), false);
         ChecklistTemplate result = checklistTemplateRepository.save(neueTemplate);
         return ChecklistTemplateMapper.toDto(result);
     }
 
     // PUT /api/checklist-templates/{id} - aktualisiert Name und Punkte
-    // einer bestehenden Vorlage.
+    // einer bestehenden Vorlage. Der standard-Status bleibt dabei immer
+    // der bisherige (aus der bestehenden Vorlage übernommen, NICHT aus
+    // dem Request) - so kann ich z.B. die Standard-Vorlage "Server"
+    // inhaltlich anpassen, ohne dass sie dadurch aus Versehen löschbar
+    // würde, und umgekehrt kann niemand eine eigene Vorlage per Edit
+    // nachträglich zur Standard-Vorlage machen.
     public ChecklistTemplateDto updateTemplate(String id, ChecklistTemplateDto templateDto) {
         ChecklistTemplate bestehendeTemplate = checklistTemplateRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + id + " nicht gefunden"));
 
         ChecklistTemplate aktualisierteTemplate = new ChecklistTemplate(
-                bestehendeTemplate.getId(), templateDto.name(), templateDto.itemBeschreibungen());
+                bestehendeTemplate.getId(),
+                templateDto.name(),
+                templateDto.itemBeschreibungen(),
+                bestehendeTemplate.isStandard()
+        );
 
         ChecklistTemplate result = checklistTemplateRepository.save(aktualisierteTemplate);
         return ChecklistTemplateMapper.toDto(result);
     }
 
-    // DELETE /api/checklist-templates/{id} - löscht eine Vorlage.
+    // DELETE /api/checklist-templates/{id} - löscht eine Vorlage, außer
+    // es handelt sich um eine der zehn Standard-Vorlagen (standard=true)
+    // - die sollen nicht aus Versehen verschwinden können. Dafür muss
+    // ich die Vorlage jetzt per findById statt nur existsById laden,
+    // damit ich den standard-Wert überhaupt prüfen kann.
     public void deleteTemplate(String id) {
-        if (!checklistTemplateRepository.existsById(id)) {
-            throw new NoSuchElementException("Checklisten-Vorlage mit ID " + id + " nicht gefunden");
+        ChecklistTemplate template = checklistTemplateRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + id + " nicht gefunden"));
+
+        if (template.isStandard()) {
+            throw new IllegalStateException(
+                    "Die Standard-Vorlage \"" + template.getName() + "\" kann nicht gelöscht werden");
         }
+
         checklistTemplateRepository.deleteById(id);
     }
 }
