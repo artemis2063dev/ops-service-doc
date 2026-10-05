@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Accordion, Alert, Badge, Button, Card, Form, Modal, Spinner, Tab, Tabs } from 'react-bootstrap';
 import { api, ApiError } from '../api/api';
+import { formatiereDatum } from '../utils/formatierung';
+import { DynamischeItemListe } from '../components/DynamischeItemListe';
 import type {
     ChecklistDto,
     ChecklistFormData,
@@ -27,6 +29,51 @@ const LEERES_TEMPLATE_FORMULAR: ChecklistTemplateFormData = {
     name: '',
     itemBeschreibungen: [''],
 };
+
+// Zerlegt einen Vorlagen-Punkt wieder in seine Bestandteile. Mein
+// ChecklistTemplateSeeder codiert Phase und "optional" direkt mit in
+// den String hinein (z.B. "[Konfiguration] Domänenbeitritt ...
+// durchführen (optional)"), weil das Datenmodell selbst kein
+// eigenes Feld dafür hat (siehe Kommentar im Seeder). Beim Anzeigen
+// hole ich das hier wieder auseinander, damit ich es sauber gruppiert
+// und mit einem Badge statt im Fließtext darstellen kann. Punkte ohne
+// "[Phase]"-Präfix (z.B. selbst angelegte Vorlagen) fallen einfach
+// unter "Sonstiges".
+// Ich nehme hier bewusst indexOf statt einer Regex: die vorherige Regex
+// hatte laut SonarQube ein super-lineares Laufzeitverhalten (Backtracking)
+// - mit indexOf ist die Laufzeit garantiert linear.
+function parseBaustein(beschreibung: string): { phase: string; text: string; optional: boolean } {
+    const optional = beschreibung.endsWith(' (optional)');
+    const ohneOptional = optional ? beschreibung.slice(0, -' (optional)'.length) : beschreibung;
+    if (ohneOptional.startsWith('[')) {
+        const ende = ohneOptional.indexOf(']');
+        // ende > 1 stellt sicher, dass zwischen den Klammern mindestens
+        // ein Zeichen steht ("[]" zählt nicht als Phase).
+        if (ende > 1) {
+            return { phase: ohneOptional.slice(1, ende), text: ohneOptional.slice(ende + 1).trim(), optional };
+        }
+    }
+    return { phase: 'Sonstiges', text: ohneOptional, optional };
+}
+
+// Gruppiert die Punkte einer Vorlage nach Phase, in der Reihenfolge,
+// in der die Phasen zum ersten Mal auftauchen (nicht alphabetisch) -
+// das entspricht dem natürlichen Ablauf (Vorbereitung vor
+// Installation vor Abnahme usw.), den ich mir beim Erstellen der
+// Vorlagen schon überlegt habe.
+function gruppiereNachPhase(itemBeschreibungen: string[]): { phase: string; punkte: { text: string; optional: boolean }[] }[] {
+    const gruppen: { phase: string; punkte: { text: string; optional: boolean }[] }[] = [];
+    for (const beschreibung of itemBeschreibungen) {
+        const { phase, text, optional } = parseBaustein(beschreibung);
+        let gruppe = gruppen.find((g) => g.phase === phase);
+        if (!gruppe) {
+            gruppe = { phase, punkte: [] };
+            gruppen.push(gruppe);
+        }
+        gruppe.punkte.push({ text, optional });
+    }
+    return gruppen;
+}
 
 // Seite für den Bereich "Checklisten" (entspricht ChecklistController +
 // ChecklistTemplateController im Backend). Ich bilde beide Bereiche
@@ -110,9 +157,16 @@ export function ChecklistenPage() {
     // einmal - Vorlagen brauche ich schon im Checklisten-Tab für die
     // Dropdown-Auswahl "aus Vorlage erzeugen", nicht erst im Vorlagen-Tab.
     useEffect(() => {
+        // ladeChecklisten/ladeTemplates fangen ihre Fehler zwar schon
+        // selbst per try/catch ab (siehe oben), geben aber trotzdem ein
+        // Promise zurück - ohne .catch() HIER an der Aufrufstelle sieht
+        // SonarQube das als "unbehandeltes Promise" (Reliability-Regel),
+        // weil es den internen try/catch nicht nachvollziehen kann. Das
+        // .catch(console.error) hier wird also praktisch nie greifen,
+        // macht die Aufrufstelle aber für die statische Analyse eindeutig.
         api.get<TicketDto[]>('/api/tickets').then(setTickets).catch(console.error);
-        ladeChecklisten('');
-        ladeTemplates();
+        ladeChecklisten('').catch(console.error);
+        ladeTemplates().catch(console.error);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -123,7 +177,9 @@ export function ChecklistenPage() {
     function handleFilterChange(ticketId: string) {
         setTicketFilter(ticketId);
         setChecklistenLoading(true);
-        ladeChecklisten(ticketId);
+        // void markiert explizit, dass ich das Promise bewusst nicht
+        // abwarte - ladeChecklisten fängt seine Fehler intern selbst ab.
+        void ladeChecklisten(ticketId);
     }
 
     // Öffnet das Modal zum Neuanlegen. Ich setze den Modus zurück auf
@@ -401,49 +457,6 @@ export function ChecklistenPage() {
             setLadeFehler('Vorlage konnte nicht gelöscht werden.');
             console.error(error);
         }
-    }
-
-    function formatiereDatum(isoDatum: string | null): string {
-        if (!isoDatum) return '–';
-        return new Date(isoDatum).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
-    }
-
-    // Zerlegt einen Vorlagen-Punkt wieder in seine Bestandteile. Mein
-    // ChecklistTemplateSeeder codiert Phase und "optional" direkt mit in
-    // den String hinein (z.B. "[Konfiguration] Domänenbeitritt ...
-    // durchführen (optional)"), weil das Datenmodell selbst kein
-    // eigenes Feld dafür hat (siehe Kommentar im Seeder). Beim Anzeigen
-    // in der Vorlagen-Übersicht hole ich das hier wieder auseinander,
-    // damit ich es sauber gruppiert und mit einem Badge statt im
-    // Fließtext darstellen kann. Punkte ohne "[Phase]"-Präfix (z.B.
-    // selbst angelegte Vorlagen) fallen einfach unter "Sonstiges".
-    function parseBaustein(beschreibung: string): { phase: string; text: string; optional: boolean } {
-        const optional = beschreibung.endsWith(' (optional)');
-        const ohneOptional = optional ? beschreibung.slice(0, -' (optional)'.length) : beschreibung;
-        const treffer = ohneOptional.match(/^\[(.+?)]\s*(.*)$/);
-        if (treffer) {
-            return { phase: treffer[1], text: treffer[2], optional };
-        }
-        return { phase: 'Sonstiges', text: ohneOptional, optional };
-    }
-
-    // Gruppiert die Punkte einer Vorlage nach Phase, in der Reihenfolge,
-    // in der die Phasen zum ersten Mal auftauchen (nicht alphabetisch) -
-    // das entspricht dem natürlichen Ablauf (Vorbereitung vor
-    // Installation vor Abnahme usw.), den ich mir beim Erstellen der
-    // Vorlagen schon überlegt habe.
-    function gruppiereNachPhase(itemBeschreibungen: string[]): { phase: string; punkte: { text: string; optional: boolean }[] }[] {
-        const gruppen: { phase: string; punkte: { text: string; optional: boolean }[] }[] = [];
-        for (const beschreibung of itemBeschreibungen) {
-            const { phase, text, optional } = parseBaustein(beschreibung);
-            let gruppe = gruppen.find((g) => g.phase === phase);
-            if (!gruppe) {
-                gruppe = { phase, punkte: [] };
-                gruppen.push(gruppe);
-            }
-            gruppe.punkte.push({ text, optional });
-        }
-        return gruppen;
     }
 
     if (checklistenLoading && templatesLoading) {
@@ -829,29 +842,22 @@ export function ChecklistenPage() {
 
                                 <Form.Group className="mb-3">
                                     <Form.Label>Items</Form.Label>
-                                    {checklistFormular.items.map((item, index) => (
-                                        <div key={index} className="d-flex gap-2 mb-2">
-                                            <Form.Control
-                                                type="text"
-                                                placeholder={`Punkt ${index + 1}`}
-                                                value={item.beschreibung}
-                                                onChange={(e) => handleItemTextAendern(index, e.target.value)}
-                                            />
-                                            <Button
-                                                variant="outline-danger"
-                                                size="sm"
-                                                onClick={() => handleItemEntfernen(index)}
-                                                // Mindestens ein Item muss übrig bleiben
-                                                // (@NotEmpty im Backend).
-                                                disabled={checklistFormular.items.length <= 1}
-                                            >
-                                                ✕
-                                            </Button>
-                                        </div>
-                                    ))}
-                                    <Button variant="outline-primary" size="sm" onClick={handleItemHinzufuegen}>
-                                        + Punkt hinzufügen
-                                    </Button>
+                                    {/* Ausgelagert in DynamischeItemListe, weil dieser
+                                    Block (Text-Input je Eintrag + ✕ zum Entfernen +
+                                    Button zum Hinzufügen) inhaltlich identisch zum
+                                    Vorlagen-Punkte-Block unten im Vorlagen-Modal war -
+                                    SonarQube hat das als Duplizierung markiert, und zu
+                                    Recht: es ist derselbe UI-Baustein. Ich reiche hier
+                                    nur die reinen Beschreibungstexte rein, die
+                                    id/erledigt-Felder der Items bleiben unverändert,
+                                    weil handleItemTextAendern/-Entfernen/-Hinzufuegen
+                                    die vollständigen Items weiterhin selbst verwalten. */}
+                                    <DynamischeItemListe
+                                        werte={checklistFormular.items.map((item) => item.beschreibung)}
+                                        onAendern={handleItemTextAendern}
+                                        onEntfernen={handleItemEntfernen}
+                                        onHinzufuegen={handleItemHinzufuegen}
+                                    />
                                 </Form.Group>
                             </>
                         )}
@@ -894,27 +900,14 @@ export function ChecklistenPage() {
 
                         <Form.Group className="mb-3">
                             <Form.Label>Punkte</Form.Label>
-                            {templateFormular.itemBeschreibungen.map((beschreibung, index) => (
-                                <div key={index} className="d-flex gap-2 mb-2">
-                                    <Form.Control
-                                        type="text"
-                                        placeholder={`Punkt ${index + 1}`}
-                                        value={beschreibung}
-                                        onChange={(e) => handleTemplateItemTextAendern(index, e.target.value)}
-                                    />
-                                    <Button
-                                        variant="outline-danger"
-                                        size="sm"
-                                        onClick={() => handleTemplateItemEntfernen(index)}
-                                        disabled={templateFormular.itemBeschreibungen.length <= 1}
-                                    >
-                                        ✕
-                                    </Button>
-                                </div>
-                            ))}
-                            <Button variant="outline-primary" size="sm" onClick={handleTemplateItemHinzufuegen}>
-                                + Punkt hinzufügen
-                            </Button>
+                            {/* Gleicher Baustein wie bei den Checklisten-Items oben -
+                            siehe Kommentar dort. */}
+                            <DynamischeItemListe
+                                werte={templateFormular.itemBeschreibungen}
+                                onAendern={handleTemplateItemTextAendern}
+                                onEntfernen={handleTemplateItemEntfernen}
+                                onHinzufuegen={handleTemplateItemHinzufuegen}
+                            />
                         </Form.Group>
                     </Form>
                 </Modal.Body>

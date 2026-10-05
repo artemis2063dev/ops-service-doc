@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap';
 import { api, ApiError } from '../api/api';
+import { formatiereDatum, formatiereZieldatum, taskStatusBadgeVariante } from '../utils/formatierung';
 import {
     TASK_STATUS_LABELS,
     type TaskDto,
@@ -72,7 +73,7 @@ export function TaskPlannerPage() {
     // feuern, nicht bei jeder Neudefinition von ladeTasks.
     useEffect(() => {
         api.get<TicketDto[]>('/api/tickets').then(setTickets).catch(console.error);
-        ladeTasks('');
+        void ladeTasks('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -84,7 +85,7 @@ export function TaskPlannerPage() {
     function handleFilterChange(ticketId: string) {
         setTicketFilter(ticketId);
         setLoading(true);
-        ladeTasks(ticketId);
+        void ladeTasks(ticketId);
     }
 
     // Sucht zu einer ticketId den passenden Ticket-Titel für die
@@ -171,37 +172,6 @@ export function TaskPlannerPage() {
         } catch (error) {
             setFehler('Task konnte nicht gelöscht werden.');
             console.error(error);
-        }
-    }
-
-    // Formatiert ein LocalDateTime vom Backend (erfasstAm/erledigtAm).
-    // null wird als "–" angezeigt (z.B. solange ein Task noch nicht
-    // erledigt ist).
-    function formatiereDatum(isoDatum: string | null): string {
-        if (!isoDatum) return '–';
-        return new Date(isoDatum).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
-    }
-
-    // Eigene Funktion für das Zieldatum (LocalDate statt LocalDateTime),
-    // weil ich hier nur das Datum ohne Uhrzeit anzeigen will - sonst
-    // würde new Date("2026-10-10") durch die Zeitzonen-Interpretation
-    // des Browsers manchmal den Vortag anzeigen, toLocaleDateString ohne
-    // timeStyle vermeidet diese Verwirrung in der Anzeige.
-    function formatiereZieldatum(datum: string | null): string {
-        if (!datum) return '–';
-        return new Date(datum).toLocaleDateString('de-DE', { dateStyle: 'medium' });
-    }
-
-    // Grün = erledigt, Blau = in Arbeit, Grau = noch offen - auf einen
-    // Blick erkennbar, ohne den Text lesen zu müssen.
-    function statusBadgeVariante(status: TaskStatus): string {
-        switch (status) {
-            case 'OFFEN':
-                return 'secondary';
-            case 'IN_BEARBEITUNG':
-                return 'primary';
-            case 'ERLEDIGT':
-                return 'success';
         }
     }
 
@@ -308,7 +278,7 @@ export function TaskPlannerPage() {
                             <td>{task.naechsteSchritte}</td>
                             <td>{formatiereZieldatum(task.zieldatum)}</td>
                             <td>
-                                <Badge bg={statusBadgeVariante(task.status)}>{TASK_STATUS_LABELS[task.status]}</Badge>
+                                <Badge bg={taskStatusBadgeVariante(task.status)}>{TASK_STATUS_LABELS[task.status]}</Badge>
                             </td>
                             <td>{formatiereDatum(task.erfasstAm)}</td>
                             <td>{formatiereDatum(task.erledigtAm)}</td>

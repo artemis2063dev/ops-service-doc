@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/api';
+import { formatiereDatum, ipdStatusBadgeVariante } from '../utils/formatierung';
 import {
     IPD_DOCUMENT_STATUS_LABELS,
     SZENARIO_TYP_LABELS,
@@ -76,7 +77,7 @@ export function IpdDocumentPage() {
     }
 
     useEffect(() => {
-        ladeDokument();
+        void ladeDokument();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
@@ -164,19 +165,11 @@ export function IpdDocumentPage() {
         }
         try {
             await api.delete(`/api/ipd/${dokument.id}`);
-            navigate('/ipd');
+            void navigate('/ipd');
         } catch (error) {
             setFehler('IPD-Dokument konnte nicht gelöscht werden.');
             console.error(error);
         }
-    }
-
-    function formatiereDatum(isoDatum: string): string {
-        return new Date(isoDatum).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
-    }
-
-    function statusBadgeVariante(status: IpdDocumentStatus): string {
-        return status === 'ABGESCHLOSSEN' ? 'success' : 'secondary';
     }
 
     if (loading) {
@@ -200,7 +193,7 @@ export function IpdDocumentPage() {
             <div className="d-flex justify-content-between align-items-start mb-4">
                 <div>
                     <h1 className="mb-1">{dokument.titel}</h1>
-                    <Badge bg={statusBadgeVariante(dokument.status)}>
+                    <Badge bg={ipdStatusBadgeVariante(dokument.status)}>
                         {IPD_DOCUMENT_STATUS_LABELS[dokument.status]}
                     </Badge>
                 </div>

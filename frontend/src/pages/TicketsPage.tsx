@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap';
 import { api, ApiError } from '../api/api';
+import { formatiereDatum, ticketStatusBadgeVariante } from '../utils/formatierung';
 import {
     SZENARIO_TYP_LABELS,
     TICKET_STATUS_LABELS,
@@ -87,7 +88,7 @@ export function TicketsPage() {
     // Re-Render (z.B. wenn sich "tickets" selbst ändert, das würde sonst
     // eine Endlosschleife auslösen).
     useEffect(() => {
-        ladeTickets();
+        void ladeTickets();
     }, []);
 
     // Wird vom "Aus GLPI synchronisieren"-Button aufgerufen. Ruft den
@@ -169,33 +170,6 @@ export function TicketsPage() {
         }
     }
 
-    // Formatiert das ISO-Datum vom Backend (z.B. "2026-10-04T18:27:00")
-    // für die Tabellen-Anzeige in deutschem Datumsformat mit Uhrzeit.
-    function formatiereDatum(isoDatum: string): string {
-        return new Date(isoDatum).toLocaleString('de-DE', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-        });
-    }
-
-    // Ordnet jedem Status eine Bootstrap-Badge-Farbe zu, damit man den
-    // Bearbeitungsstand eines Tickets auf einen Blick erkennt, ohne den
-    // Text lesen zu müssen (z.B. grün = fertig, grau = noch nicht begonnen).
-    function statusBadgeVariante(status: TicketStatus): string {
-        switch (status) {
-            case 'NEU':
-                return 'secondary';
-            case 'IN_BEARBEITUNG':
-                return 'primary';
-            case 'AUSSTEHEND':
-                return 'warning';
-            case 'GELOEST':
-                return 'success';
-            case 'GESCHLOSSEN':
-                return 'dark';
-        }
-    }
-
     // Solange die erste Ladeanfrage noch läuft, zeige ich nur den
     // Spinner statt einer leeren Tabelle - vermeidet ein kurzes
     // "Flackern" von "keine Tickets vorhanden" direkt gefolgt von der
@@ -256,7 +230,7 @@ export function TicketsPage() {
                             <td>{ticket.techniker}</td>
                             <td>{SZENARIO_TYP_LABELS[ticket.szenarioTyp]}</td>
                             <td>
-                                <Badge bg={statusBadgeVariante(ticket.status)}>
+                                <Badge bg={ticketStatusBadgeVariante(ticket.status)}>
                                     {TICKET_STATUS_LABELS[ticket.status]}
                                 </Badge>
                             </td>

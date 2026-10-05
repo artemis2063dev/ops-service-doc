@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Form, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/api';
-import { IPD_DOCUMENT_STATUS_LABELS, type IpdDocumentDto, type IpdDocumentStatus, type TicketDto } from '../api/types';
+import { formatiereDatum, ipdStatusBadgeVariante } from '../utils/formatierung';
+import { IPD_DOCUMENT_STATUS_LABELS, type IpdDocumentDto, type TicketDto } from '../api/types';
 
 // Seite für den Bereich "IPD-Generator" (entspricht IpdDocumentController
 // im Backend) - der "Generieren"-Teil aus meiner geplanten Seitenreihenfolge
@@ -49,7 +50,7 @@ export function IpdGeneratorPage() {
     }
 
     useEffect(() => {
-        ladeDaten();
+        void ladeDaten();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -88,7 +89,7 @@ export function IpdGeneratorPage() {
             // Direkt zur Detailseite springen, damit ich sofort mit dem
             // Ausfüllen der restlichen Abschnitte weitermachen kann,
             // statt erst wieder in der Liste danach suchen zu müssen.
-            navigate(`/ipd/${neuesDokument.id}`);
+            void navigate(`/ipd/${neuesDokument.id}`);
         } catch (error) {
             setFehler('Entwurf konnte nicht erzeugt werden.');
             console.error(error);
@@ -108,14 +109,6 @@ export function IpdGeneratorPage() {
             setFehler('IPD-Dokument konnte nicht gelöscht werden.');
             console.error(error);
         }
-    }
-
-    function formatiereDatum(isoDatum: string): string {
-        return new Date(isoDatum).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
-    }
-
-    function statusBadgeVariante(status: IpdDocumentStatus): string {
-        return status === 'ABGESCHLOSSEN' ? 'success' : 'secondary';
     }
 
     if (loading) {
@@ -182,7 +175,7 @@ export function IpdGeneratorPage() {
                             <td>{dokument.titel}</td>
                             <td>{ticketTitel(dokument.ticketId)}</td>
                             <td>
-                                <Badge bg={statusBadgeVariante(dokument.status)}>
+                                <Badge bg={ipdStatusBadgeVariante(dokument.status)}>
                                     {IPD_DOCUMENT_STATUS_LABELS[dokument.status]}
                                 </Badge>
                             </td>
