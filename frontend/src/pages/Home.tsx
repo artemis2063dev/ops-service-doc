@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom';
 import { Button, Card, Col, Row } from 'react-bootstrap';
 import { useAuth } from '../auth/AuthContext';
+import { useGlpiUrl } from '../hooks/useGlpiUrl';
 
 // Startseite: ohne Login nur ein kurzer Überblick + Login-Button, mit
-// Login eine kurze Übersicht über die vier Arbeitsbereiche als
+// Login eine kurze Übersicht über die Arbeitsbereiche als
 // Einstiegspunkte (Karten statt nur Navigationslinks, damit man - z.B.
 // in der Präsentation - sofort sieht, was die App kann).
 export function Home() {
     const { username, loginUrl } = useAuth();
+    // Hook muss vor dem frühen return stehen (Rules of Hooks).
+    const glpiUrl = useGlpiUrl(Boolean(username));
 
     if (!username) {
         return (
@@ -54,6 +57,24 @@ export function Home() {
                         </Card>
                     </Col>
                 ))}
+                {glpiUrl && (
+                    <Col>
+                        <Card className="h-100">
+                            <Card.Body>
+                                <Card.Title>GLPI</Card.Title>
+                                <Card.Text>Das Ticketsystem GLPI direkt öffnen (neuer Tab).</Card.Text>
+                                <a
+                                    href={glpiUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-outline-primary"
+                                >
+                                    GLPI öffnen ↗
+                                </a>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                )}
             </Row>
         </div>
     );

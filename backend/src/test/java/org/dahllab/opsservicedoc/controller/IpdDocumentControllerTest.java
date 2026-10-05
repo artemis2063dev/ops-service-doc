@@ -1,5 +1,7 @@
 package org.dahllab.opsservicedoc.controller;
 
+import org.dahllab.opsservicedoc.model.Checklist;
+import org.dahllab.opsservicedoc.model.ChecklistItem;
 import org.dahllab.opsservicedoc.model.IpdDocument;
 import org.dahllab.opsservicedoc.model.IpdDocumentStatus;
 import org.dahllab.opsservicedoc.model.SzenarioTyp;
@@ -17,6 +19,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -155,5 +158,40 @@ class IpdDocumentControllerTest {
         mockMvc.perform(get("/api/ipd/" + gespeichertesDokument.getId() + "/pdf").with(oauth2Login()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/pdf"));
+    }
+
+    @Test
+    void getChecklistPdf_liefertPdfDatei_wennChecklisteVorhanden() throws Exception {
+        IpdDocument dokument = ipdDocumentRepository.save(new IpdDocument(
+                null, "ticket-1", IpdDocumentStatus.ENTWURF, "Server-Wartung", "Mia Muster",
+                SzenarioTyp.SERVER_WARTUNG, "Musterfirma GmbH", null, null, null, null,
+                null, null, null, null, null, null, "", null, null, null, false,
+                LocalDateTime.now(), LocalDateTime.now()));
+        checklistRepository.save(new Checklist(null, "ticket-1", "Wartung",
+                List.of(new ChecklistItem("i-1", "USV geprüft", false)), LocalDateTime.now(), null));
+
+        mockMvc.perform(get("/api/ipd/" + dokument.getId() + "/checklist-pdf").with(oauth2Login()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/pdf"))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"checkliste-" + dokument.getId() + ".pdf\""));
+    }
+
+    @Test
+    void getChecklistPdf_gibt404_wennKeineChecklisteVorhanden() throws Exception {
+        IpdDocument dokument = ipdDocumentRepository.save(new IpdDocument(
+                null, "ticket-1", IpdDocumentStatus.ENTWURF, "Server-Wartung", "Mia Muster",
+                SzenarioTyp.SERVER_WARTUNG, "Musterfirma GmbH", null, null, null, null,
+                null, null, null, null, null, null, "", null, null, null, false,
+                LocalDateTime.now(), LocalDateTime.now()));
+
+        mockMvc.perform(get("/api/ipd/" + dokument.getId() + "/checklist-pdf").with(oauth2Login()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getChecklistPdf_gibt401_wennNichtEingeloggt() throws Exception {
+        mockMvc.perform(get("/api/ipd/irgendeine-id/checklist-pdf"))
+                .andExpect(status().isUnauthorized());
     }
 }
