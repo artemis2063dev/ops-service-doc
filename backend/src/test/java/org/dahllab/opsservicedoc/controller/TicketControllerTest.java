@@ -17,6 +17,7 @@ import java.util.List;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -120,6 +121,7 @@ class TicketControllerTest {
         var result = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/tickets")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(neuesTicket))
         );
@@ -146,6 +148,7 @@ class TicketControllerTest {
         var result = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/tickets/1")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(aktualisiertesTicket))
         );

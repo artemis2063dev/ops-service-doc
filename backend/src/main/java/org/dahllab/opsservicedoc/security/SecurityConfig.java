@@ -6,10 +6,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.beans.factory.annotation.Value;
 
 // @Configuration: sagt Spring, dass diese Klasse Bean-Definitionen enthält,
 // die beim Hochfahren der App geladen werden sollen
@@ -33,10 +33,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF (Cross-Site Request Forgery)-Schutz deaktivieren.
-                // Sinnvoll bei einer REST-API mit separatem Frontend (kein klassisches Server-Side-Rendering
-                // mit Formularen), da CSRF-Tokens hier keinen praktischen Schutz bieten
-                .csrf(AbstractHttpConfigurer::disable)
+                // CSRF-Schutz (Cross-Site Request Forgery) ist AKTIV. Meine API
+                // authentifiziert über das Session-Cookie, und der Browser schickt
+                // Cookies bei jeder Anfrage an meine Domain automatisch mit - auch
+                // wenn die Anfrage von einer fremden Seite ausgelöst wird. Ohne
+                // CSRF-Token könnte so eine fremde Seite im Namen eines eingeloggten
+                // Nutzers z.B. Tickets löschen. Ein Token, das nur meine eigene
+                // Seite kennt, verhindert das.
+                // Ablauf: Das Backend legt das Token als Cookie "XSRF-TOKEN" ab
+                // (nicht HttpOnly, damit mein React-Code es lesen kann), das Frontend
+                // schickt es bei schreibenden Aufrufen (POST/PUT/DELETE) im Header
+                // "X-XSRF-TOKEN" zurück (siehe api.ts). Eine fremde Seite kann mein
+                // Cookie nicht lesen und deshalb den Header nicht setzen.
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(csrfTokenHandler()))
 
                 // Regeln, WELCHE Endpoints WELCHEN Zugriffsschutz brauchen.
                 // WICHTIG: Die Reihenfolge zählt! Spring prüft von oben nach unten
@@ -75,5 +86,20 @@ public class SecurityConfig {
 
         // Baut die konfigurierte Filterkette und gibt sie an Spring zurück
         return http.build();
+    }
+
+    // Handler für das CSRF-Token. Zwei Details für meine SPA:
+    // 1. CsrfTokenRequestAttributeHandler statt des Standard-Handlers: der
+    //    Standard verschlüsselt das Token pro Antwort (BREACH-Schutz), dann
+    //    stimmt der Cookie-Wert nicht mit dem Header-Wert überein, den
+    //    React aus dem Cookie liest.
+    // 2. setCsrfRequestAttributeName(null) schaltet das "verzögerte" Laden
+    //    ab: das Cookie wird so bei JEDER Antwort gesetzt (auch bei
+    //    GET /api/auth/me beim Seitenstart), nicht erst wenn jemand das
+    //    Token anfordert - sonst hätte React beim ersten POST noch keins.
+    private static CsrfTokenRequestAttributeHandler csrfTokenHandler() {
+        CsrfTokenRequestAttributeHandler handler = new CsrfTokenRequestAttributeHandler();
+        handler.setCsrfRequestAttributeName(null);
+        return handler;
     }
 }

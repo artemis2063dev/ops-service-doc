@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -58,6 +59,7 @@ class ChecklistTemplateControllerTest {
 
         mockMvc.perform(post("/api/checklist-templates")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -78,6 +80,7 @@ class ChecklistTemplateControllerTest {
 
         mockMvc.perform(post("/api/checklist-templates")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -120,6 +123,7 @@ class ChecklistTemplateControllerTest {
 
         mockMvc.perform(put("/api/checklist-templates/" + gespeicherteTemplate.getId())
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -133,7 +137,7 @@ class ChecklistTemplateControllerTest {
         ChecklistTemplate gespeicherteTemplate = checklistTemplateRepository.save(
                 new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft"), false));
 
-        mockMvc.perform(delete("/api/checklist-templates/" + gespeicherteTemplate.getId()).with(oauth2Login()))
+        mockMvc.perform(delete("/api/checklist-templates/" + gespeicherteTemplate.getId()).with(oauth2Login()).with(csrf()))
                 .andExpect(status().isNoContent());
     }
 
@@ -147,7 +151,7 @@ class ChecklistTemplateControllerTest {
         ChecklistTemplate standardTemplate = checklistTemplateRepository.save(
                 new ChecklistTemplate(null, "Server", List.of("[Vorbereitung] Backup prüfen"), true));
 
-        mockMvc.perform(delete("/api/checklist-templates/" + standardTemplate.getId()).with(oauth2Login()))
+        mockMvc.perform(delete("/api/checklist-templates/" + standardTemplate.getId()).with(oauth2Login()).with(csrf()))
                 .andExpect(status().isConflict());
 
         assertThat(checklistTemplateRepository.existsById(standardTemplate.getId())).isTrue();
