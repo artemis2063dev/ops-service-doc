@@ -16,9 +16,12 @@ public record ChecklistTemplateDto(
         // den bestehenden Wert bei) und von einem Request-Body IMMER
         // ignoriert, damit niemand über die API eine eigene Vorlage
         // nachträglich zur unlöschbaren Standard-Vorlage machen kann
-        // oder umgekehrt. Fehlt das Feld im JSON (z.B. weil mein
-        // Frontend es beim Anlegen/Bearbeiten gar nicht mitschickt),
-        // setzt Jackson hier einfach false.
-        boolean standard
+        // oder umgekehrt. Ich nehme bewusst den Wrapper-Typ Boolean statt
+        // des primitiven boolean: Fehlt das Feld im JSON (mein Frontend
+        // schickt es beim Anlegen/Bearbeiten gar nicht mit), würde Jackson
+        // bei einem primitiven boolean mit "Cannot map null into type
+        // boolean" abbrechen und die Anfrage mit 400 ablehnen. Mit Boolean
+        // ist das Feld dann einfach null, und der Service ignoriert es ohnehin.
+        Boolean standard
 ) {
 }
