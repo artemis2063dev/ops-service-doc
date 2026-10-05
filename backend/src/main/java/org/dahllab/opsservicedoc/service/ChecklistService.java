@@ -11,12 +11,16 @@ import org.dahllab.opsservicedoc.util.ChecklistMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
 public class ChecklistService {
+
+    // Gemeinsamer Teil der "nicht gefunden"-Fehlermeldungen: ein Literal statt vieler Kopien
+    private static final String NICHT_GEFUNDEN = " nicht gefunden";
 
     private final ChecklistRepository checklistRepository;
     private final ChecklistTemplateRepository checklistTemplateRepository;
@@ -45,7 +49,7 @@ public class ChecklistService {
     // GET /api/checklists/{id} - liefert genau eine Checkliste.
     public ChecklistDto getChecklistById(String id) {
         Checklist result = checklistRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Checkliste mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException("Checkliste mit ID " + id + NICHT_GEFUNDEN));
         return ChecklistMapper.toDto(result);
     }
 
@@ -59,7 +63,7 @@ public class ChecklistService {
                 checklistDto.ticketId(),
                 checklistDto.titel(),
                 items,
-                LocalDateTime.now(),
+                LocalDateTime.now(ZoneId.systemDefault()),
                 null
         );
 
@@ -78,7 +82,7 @@ public class ChecklistService {
     // GlobalExceptionHandler in 404 übersetzt.
     public ChecklistDto createChecklistFromTemplate(String ticketId, String templateId) {
         ChecklistTemplate template = checklistTemplateRepository.findById(templateId)
-                .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + templateId + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + templateId + NICHT_GEFUNDEN));
 
         List<ChecklistItem> items = template.getItemBeschreibungen().stream()
                 .map(beschreibung -> new ChecklistItem(UUID.randomUUID().toString(), beschreibung, false))
@@ -89,7 +93,7 @@ public class ChecklistService {
                 ticketId,
                 template.getName(),
                 items,
-                LocalDateTime.now(),
+                LocalDateTime.now(ZoneId.systemDefault()),
                 null
         );
 
@@ -102,7 +106,7 @@ public class ChecklistService {
     // bleibt unverändert, abgeschlossenAm wird jedes Mal neu bewertet.
     public ChecklistDto updateChecklist(String id, ChecklistDto checklistDto) {
         Checklist bestehendeChecklist = checklistRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Checkliste mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException("Checkliste mit ID " + id + NICHT_GEFUNDEN));
 
         List<ChecklistItem> items = erzeugeItemsMitId(checklistDto.items());
 
@@ -124,7 +128,7 @@ public class ChecklistService {
     // DELETE /api/checklists/{id} - löscht eine Checkliste.
     public void deleteChecklist(String id) {
         if (!checklistRepository.existsById(id)) {
-            throw new NoSuchElementException("Checkliste mit ID " + id + " nicht gefunden");
+            throw new NoSuchElementException("Checkliste mit ID " + id + NICHT_GEFUNDEN);
         }
         checklistRepository.deleteById(id);
     }
@@ -147,7 +151,7 @@ public class ChecklistService {
     private void setzeAbschlussdatumWennAlleErledigt(Checklist checklist) {
         boolean alleErledigt = checklist.getItems().stream().allMatch(ChecklistItem::isErledigt);
         if (alleErledigt) {
-            checklist.setAbgeschlossenAm(LocalDateTime.now());
+            checklist.setAbgeschlossenAm(LocalDateTime.now(ZoneId.systemDefault()));
         }
     }
 }

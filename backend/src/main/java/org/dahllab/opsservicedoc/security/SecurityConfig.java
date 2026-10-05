@@ -31,7 +31,7 @@ public class SecurityConfig {
     // SecurityFilterChain: die Kette von Filtern, die JEDE eingehende HTTP-Anfrage durchläuft,
     // bevor sie beim eigentlichen Controller ankommt
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http
                 // CSRF-Schutz (Cross-Site Request Forgery) ist AKTIV. Meine API
                 // authentifiziert über das Session-Cookie, und der Browser schickt
@@ -46,7 +46,7 @@ public class SecurityConfig {
                 // "X-XSRF-TOKEN" zurück (siehe api.ts). Eine fremde Seite kann mein
                 // Cookie nicht lesen und deshalb den Header nicht setzen.
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // NOSONAR: CSRF-Cookie muss fuer die SPA lesbar sein (Double-Submit), die Session-Cookie bleibt HttpOnly
                         .csrfTokenRequestHandler(csrfTokenHandler()))
 
                 // Regeln, WELCHE Endpoints WELCHEN Zugriffsschutz brauchen.

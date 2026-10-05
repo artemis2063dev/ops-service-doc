@@ -1,60 +1,173 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
-import { Button, Container, Nav, Navbar } from 'react-bootstrap';
-import { useAuth } from '../auth/AuthContext';
-import { useGlpiUrl } from '../hooks/useGlpiUrl';
+import { useState } from 'react'
+import { NavLink, Outlet, Link } from 'react-router-dom'
+import {
+    FaBars,
+    FaClipboardCheck,
+    FaExternalLinkAlt,
+    FaFileAlt,
+    FaTasks,
+    FaTachometerAlt,
+    FaTicketAlt,
+    FaTimes,
+} from 'react-icons/fa'
+import { useAuth } from '../auth/useAuth'
+import { useGlpiUrl } from '../hooks/useGlpiUrl'
+import { OsdLogo } from './OsdLogo'
+import { HudUhr } from './HudUhr'
+import { UserMenu } from './UserMenu'
+import '../hud-layout.css'
 
-// Gemeinsames Grundgerüst für alle Seiten: Navigation oben, darunter
-// der jeweilige Seiteninhalt über <Outlet /> (React-Router rendert hier
-// die aktuell passende Route hinein, siehe App.tsx).
+// Alle internen Menüpunkte an EINER Stelle. Sidebar und mobiles Kachelmenü
+// lesen aus derselben Liste, so müssen neue Seiten nur einmal eingetragen
+// werden. `end` sorgt dafür, dass "/" nur bei der Startseite aktiv ist und
+// nicht bei jeder Unterseite.
+const MENUE = [
+    { to: '/', label: 'Dashboard', icon: <FaTachometerAlt />, end: true },
+    { to: '/tickets', label: 'Tickets', icon: <FaTicketAlt />, end: false },
+    { to: '/tasks', label: 'TaskPlanner', icon: <FaTasks />, end: false },
+    { to: '/checklisten', label: 'Checklisten', icon: <FaClipboardCheck />, end: false },
+    { to: '/ipd', label: 'IPD-Generator', icon: <FaFileAlt />, end: false },
+]
+
+// Gemeinsames Grundgerüst für alle Seiten (siehe App.tsx):
+// - Desktop: feste Sidebar links, oben eine Kopfleiste mit Uhr, unten eine Statusleiste
+// - Mobil: Kopfzeile mit Hamburger, der ein Vollbild-Kachelmenü öffnet
+// Die eigentliche Seite wird über <Outlet /> in den Hauptbereich gerendert.
 export function Layout() {
-    const { username, loading, logout } = useAuth();
-    const glpiUrl = useGlpiUrl(Boolean(username));
+    const { username, loading, logout } = useAuth()
+    const glpiUrl = useGlpiUrl(Boolean(username))
+    // Steuert das mobile Vollbild-Menü
+    const [menueOffen, setMenueOffen] = useState(false)
+
+    // Die Navigation zeige ich nur, wenn jemand eingeloggt ist - ohne Login
+    // würden die Links ohnehin nur in einen 401 laufen (siehe SecurityConfig).
+    const eingeloggt = !loading && Boolean(username)
 
     return (
-        <>
-            <Navbar expand="md" className="app-navbar" variant="dark">
-                <Container fluid>
-                    <Navbar.Brand as={Link} to="/">
-                        OpsServiceDoc
-                    </Navbar.Brand>
-                    <Navbar.Toggle aria-controls="main-nav" />
-                    <Navbar.Collapse id="main-nav">
-                        {/* Die Navigationspunkte zeige ich nur an, wenn jemand
-                  eingeloggt ist - ohne Login würden die Links ohnehin nur
-                  in einen 401 laufen (siehe SecurityConfig). */}
-                        {username && (
-                            <Nav className="me-auto">
-                                <Nav.Link as={NavLink} to="/tickets">Tickets</Nav.Link>
-                                <Nav.Link as={NavLink} to="/tasks">TaskPlanner</Nav.Link>
-                                <Nav.Link as={NavLink} to="/checklisten">Checklisten</Nav.Link>
-                                <Nav.Link as={NavLink} to="/ipd">IPD-Generator</Nav.Link>
-                                {/* GLPI ist ein externes System: öffnet in neuem Tab. */}
-                                {glpiUrl && (
-                                    <Nav.Link href={glpiUrl} target="_blank" rel="noopener noreferrer">
-                                        GLPI ↗
-                                    </Nav.Link>
-                                )}
-                            </Nav>
-                        )}
-                        <Nav>
-                            {/* Der Login-Button steht nur noch in der Mitte der
-                            Startseite (Home.tsx), nicht mehr hier in der Navbar. */}
-                            {!loading && username && (
-                                <div className="d-flex align-items-center gap-3">
-                                    <span className="text-light">Angemeldet als {username}</span>
-                                    <Button variant="outline-light" size="sm" onClick={logout}>
-                                        Logout
-                                    </Button>
-                                </div>
-                            )}
-                        </Nav>
-                    </Navbar.Collapse>
-                </Container>
-            </Navbar>
+        <div className={`hud-shell ${eingeloggt ? 'hud-shell--mit-sidebar' : ''}`}>
+            {/* ---------- Sidebar (nur Desktop, nur eingeloggt) ---------- */}
+            {eingeloggt && (
+                <aside className="hud-sidebar">
+                    <Link to="/" className="hud-sidebar__logo" aria-label="Zur Startseite">
+                        <OsdLogo />
+                    </Link>
 
-            <Container fluid className="app-content">
-                <Outlet />
-            </Container>
-        </>
-    );
+                    <nav className="hud-nav" aria-label="Hauptnavigation">
+                        {MENUE.map((punkt) => (
+                            <NavLink
+                                key={punkt.to}
+                                to={punkt.to}
+                                end={punkt.end}
+                                className={({ isActive }) => `hud-nav__item ${isActive ? 'is-active' : ''}`}
+                            >
+                                {punkt.icon}
+                                <span>{punkt.label}</span>
+                            </NavLink>
+                        ))}
+                        {/* GLPI ist ein externes System: eigener Tab, daher normaler <a>-Link
+                            und kein Router-Link. rel="noopener noreferrer" verhindert, dass
+                            die geöffnete Seite Zugriff auf mein Fenster bekommt. */}
+                        {glpiUrl && (
+                            <a
+                                className="hud-nav__item"
+                                href={glpiUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <FaExternalLinkAlt />
+                                <span>GLPI ↗</span>
+                            </a>
+                        )}
+                    </nav>
+                </aside>
+            )}
+
+            <div className="hud-main">
+                {/* ---------- Kopfleiste ---------- */}
+                <header className="hud-topbar">
+                    {/* Mobil: Hamburger links */}
+                    {eingeloggt && (
+                        <button
+                            type="button"
+                            className="hud-topbar__burger"
+                            aria-label="Menü öffnen"
+                            onClick={() => setMenueOffen(true)}
+                        >
+                            <FaBars />
+                        </button>
+                    )}
+                    {/* Das Logo in der Kopfleiste zeige ich nur mobil bzw. ohne Sidebar,
+                        sonst steht es doppelt (die Sidebar hat ihr eigenes). */}
+                    <Link to="/" className="hud-topbar__logo" aria-label="Zur Startseite">
+                        <OsdLogo />
+                    </Link>
+                    <div className="hud-topbar__spacer" />
+                    <HudUhr />
+                    {/* Das Benutzermenü sitzt oben rechts in der Kopfleiste, neben der Uhr */}
+                    {eingeloggt && username && (
+                        <div className="hud-topbar__user">
+                            <UserMenu username={username} onLogout={logout} />
+                        </div>
+                    )}
+                </header>
+
+                <main className="hud-content">
+                    <Outlet />
+                </main>
+
+                {/* ---------- Statusleiste ---------- */}
+                <footer className="hud-statusbar">
+                    <span>OpsServiceDoc v1.0</span>
+                    <span className="hud-statusbar__mitte">
+                        {eingeloggt ? 'Gesicherte Verbindung · Session aktiv' : 'Nicht angemeldet'}
+                    </span>
+                    <span>{eingeloggt ? username : ''}</span>
+                </footer>
+            </div>
+
+            {/* ---------- Mobiles Vollbild-Menü (Kacheln) ---------- */}
+            {eingeloggt && menueOffen && (
+                <div className="hud-overlay" role="dialog" aria-modal="true" aria-label="Menü">
+                    <div className="hud-overlay__kopf">
+                        <OsdLogo />
+                        <button
+                            type="button"
+                            className="hud-topbar__burger"
+                            aria-label="Menü schließen"
+                            onClick={() => setMenueOffen(false)}
+                        >
+                            <FaTimes />
+                        </button>
+                    </div>
+                    <div className="hud-overlay__kacheln">
+                        {MENUE.map((punkt) => (
+                            <NavLink
+                                key={punkt.to}
+                                to={punkt.to}
+                                end={punkt.end}
+                                className={({ isActive }) => `hud-kachel ${isActive ? 'is-active' : ''}`}
+                                // Nach dem Klick Menü schließen, sonst läge es über der neuen Seite
+                                onClick={() => setMenueOffen(false)}
+                            >
+                                {punkt.icon}
+                                <span>{punkt.label}</span>
+                            </NavLink>
+                        ))}
+                        {glpiUrl && (
+                            <a
+                                className="hud-kachel"
+                                href={glpiUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setMenueOffen(false)}
+                            >
+                                <FaExternalLinkAlt />
+                                <span>GLPI ↗</span>
+                            </a>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Accordion, Alert, Badge, Button, Card, Form, Modal, Spinner, Tab, Tabs } from 'react-bootstrap';
+import { Accordion, Alert, Badge, Button, Form, Modal, Spinner, Tab, Tabs, ProgressBar } from 'react-bootstrap';
+import HudPanel from '../components/HudPanel';
 import { api, ApiError } from '../api/api';
 import { formatiereDatum } from '../utils/formatierung';
 import { DynamischeItemListe } from '../components/DynamischeItemListe';
@@ -81,6 +82,12 @@ function gruppiereNachPhase(itemBeschreibungen: string[]): { phase: string; punk
 // (Vorlagen existieren nur, um daraus Checklisten zu erzeugen), aber
 // datentechnisch komplett unabhängig sind (verschiedene Endpunkte,
 // verschiedene Services).
+// Anteil der erledigten Items in Prozent (0 bei leerer Liste, damit ich nicht durch 0 teile).
+function fortschrittProzent(items: { erledigt: boolean }[]): number {
+    if (items.length === 0) return 0;
+    return (items.filter((item) => item.erledigt).length / items.length) * 100;
+}
+
 export function ChecklistenPage() {
     // ---- gemeinsame Daten ----
     const [tickets, setTickets] = useState<TicketDto[]>([]);
@@ -156,18 +163,39 @@ export function ChecklistenPage() {
     // Beim ersten Rendern lade ich Tickets, Checklisten UND Vorlagen auf
     // einmal - Vorlagen brauche ich schon im Checklisten-Tab für die
     // Dropdown-Auswahl "aus Vorlage erzeugen", nicht erst im Vorlagen-Tab.
+    // Die Anfragen stehen direkt im Effect: State wird nur im Callback gesetzt,
+    // wenn die Daten ankommen, und `abgebrochen` schützt davor, State nach dem
+    // Verlassen der Seite zu setzen.
     useEffect(() => {
-        // ladeChecklisten/ladeTemplates fangen ihre Fehler zwar schon
-        // selbst per try/catch ab (siehe oben), geben aber trotzdem ein
-        // Promise zurück - ohne .catch() HIER an der Aufrufstelle sieht
-        // SonarQube das als "unbehandeltes Promise" (Reliability-Regel),
-        // weil es den internen try/catch nicht nachvollziehen kann. Das
-        // .catch(console.error) hier wird also praktisch nie greifen,
-        // macht die Aufrufstelle aber für die statische Analyse eindeutig.
+        let abgebrochen = false;
         api.get<TicketDto[]>('/api/tickets').then(setTickets).catch(console.error);
-        ladeChecklisten('').catch(console.error);
-        ladeTemplates().catch(console.error);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        api.get<ChecklistDto[]>('/api/checklists')
+            .then((geladeneChecklisten) => {
+                if (!abgebrochen) setChecklists(geladeneChecklisten);
+            })
+            .catch((error) => {
+                if (abgebrochen) return;
+                setLadeFehler('Checklisten konnten nicht geladen werden.');
+                console.error(error);
+            })
+            .finally(() => {
+                if (!abgebrochen) setChecklistenLoading(false);
+            });
+        api.get<ChecklistTemplateDto[]>('/api/checklist-templates')
+            .then((geladeneTemplates) => {
+                if (!abgebrochen) setTemplates(geladeneTemplates);
+            })
+            .catch((error) => {
+                if (abgebrochen) return;
+                setLadeFehler('Checklisten-Vorlagen konnten nicht geladen werden.');
+                console.error(error);
+            })
+            .finally(() => {
+                if (!abgebrochen) setTemplatesLoading(false);
+            });
+        return () => {
+            abgebrochen = true;
+        };
     }, []);
 
     function ticketTitel(ticketId: string): string {
@@ -467,6 +495,12 @@ export function ChecklistenPage() {
         );
     }
 
+    // Welcher Eingabebereich im Modal sichtbar ist - als eigene Variablen statt einer
+    // verschachtelten Bedingung im JSX (besser lesbar). Beim Bearbeiten gibt es nur
+    // den manuellen Bereich.
+    const zeigeVorlageModus = !bearbeiteteChecklist && erstellModus === 'vorlage';
+    const zeigeBaukastenModus = !bearbeiteteChecklist && erstellModus === 'baukasten';
+
     return (
         <div className="py-4">
             <h1 className="mb-4">Checklisten</h1>
@@ -504,7 +538,7 @@ export function ChecklistenPage() {
                     )}
 
                     {checklists.length === 0 ? (
-                        <Alert variant="light" className="text-center text-muted">
+                        <Alert variant="dark" className="text-center">
                             {ticketFilter
                                 ? `Für "${ticketTitel(ticketFilter)}" sind noch keine Checklisten erfasst.`
                                 : 'Keine Checklisten vorhanden.'}
@@ -515,12 +549,10 @@ export function ChecklistenPage() {
                         // kleine Liste sind - das lässt sich in einer
                         // einzelnen Tabellenzelle kaum lesbar darstellen.
                         checklists.map((checklist) => (
-                            <Card key={checklist.id} className="mb-3">
-                                <Card.Header className="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{checklist.titel}</strong>{' '}
-                                        <span className="text-muted">— {ticketTitel(checklist.ticketId)}</span>
-                                    </div>
+                            <HudPanel key={checklist.id} title={checklist.titel} className="mb-3">
+                                {/* Kopfzeile: zugehöriges Ticket + Status-Badge */}
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <span className="text-muted">{ticketTitel(checklist.ticketId)}</span>
                                     {checklist.abgeschlossenAm ? (
                                         <Badge bg="success">
                                             Abgeschlossen am {formatiereDatum(checklist.abgeschlossenAm)}
@@ -528,26 +560,30 @@ export function ChecklistenPage() {
                                     ) : (
                                         <Badge bg="secondary">Offen</Badge>
                                     )}
-                                </Card.Header>
-                                <Card.Body>
-                                    <Form>
-                                        {checklist.items.map((item) => (
-                                            <Form.Check
-                                                key={item.id}
-                                                type="checkbox"
-                                                id={`item-${item.id}`}
-                                                label={item.beschreibung}
-                                                checked={item.erledigt}
-                                                // Ein Klick aufs Häkchen speichert sofort,
-                                                // ohne Umweg über ein Modal - siehe
-                                                // handleItemUmschalten oben.
-                                                onChange={() => handleItemUmschalten(checklist, item)}
-                                                className={item.erledigt ? 'text-decoration-line-through text-muted' : ''}
-                                            />
-                                        ))}
-                                    </Form>
-                                </Card.Body>
-                                <Card.Footer className="d-flex gap-2">
+                                </div>
+                                {/* Fortschrittsbalken: Anteil der erledigten Items */}
+                                <ProgressBar
+                                    className="hud-progress mb-3"
+                                    now={fortschrittProzent(checklist.items)}
+                                    aria-label={`Fortschritt ${checklist.titel}`}
+                                />
+                                <Form>
+                                    {checklist.items.map((item) => (
+                                        <Form.Check
+                                            key={item.id}
+                                            type="checkbox"
+                                            id={`item-${item.id}`}
+                                            label={item.beschreibung}
+                                            checked={item.erledigt}
+                                            // Ein Klick aufs Häkchen speichert sofort,
+                                            // ohne Umweg über ein Modal - siehe
+                                            // handleItemUmschalten oben.
+                                            onChange={() => handleItemUmschalten(checklist, item)}
+                                            className={item.erledigt ? 'text-decoration-line-through text-muted' : ''}
+                                        />
+                                    ))}
+                                </Form>
+                                <div className="d-flex gap-2 mt-3">
                                     <Button
                                         variant="outline-secondary"
                                         size="sm"
@@ -562,8 +598,8 @@ export function ChecklistenPage() {
                                     >
                                         Löschen
                                     </Button>
-                                </Card.Footer>
-                            </Card>
+                                </div>
+                            </HudPanel>
                         ))
                     )}
                 </Tab>
@@ -576,7 +612,7 @@ export function ChecklistenPage() {
                     </div>
 
                     {templates.length === 0 ? (
-                        <Alert variant="light" className="text-center text-muted">
+                        <Alert variant="dark" className="text-center">
                             Noch keine Vorlagen vorhanden.
                         </Alert>
                     ) : (
@@ -604,11 +640,11 @@ export function ChecklistenPage() {
                                             <div key={gruppe.phase} className="mb-3">
                                                 <div className="fw-bold mb-1">{gruppe.phase}</div>
                                                 <ul className="mb-0">
-                                                    {gruppe.punkte.map((punkt, index) => (
-                                                        <li key={index}>
+                                                    {gruppe.punkte.map((punkt) => (
+                                                        <li key={punkt.text}>
                                                             {punkt.text}
                                                             {punkt.optional && (
-                                                                <Badge bg="light" text="dark" className="ms-2 border">
+                                                                <Badge bg="secondary" className="ms-2">
                                                                     optional
                                                                 </Badge>
                                                             )}
@@ -716,7 +752,7 @@ export function ChecklistenPage() {
                             </Form.Group>
                         )}
 
-                        {!bearbeiteteChecklist && erstellModus === 'vorlage' ? (
+                        {zeigeVorlageModus && (
                             // Vorlagen-Modus: ich brauche nur noch die Auswahl
                             // DER Vorlage, Titel und Items übernimmt das Backend
                             // 1:1 aus der Vorlage (ChecklistService.createChecklistFromTemplate).
@@ -733,7 +769,9 @@ export function ChecklistenPage() {
                                     ))}
                                 </Form.Select>
                             </Form.Group>
-                        ) : !bearbeiteteChecklist && erstellModus === 'baukasten' ? (
+                        )}
+
+                        {zeigeBaukastenModus && (
                             // Baukasten-Modus: Titel tippe ich selbst ein (es
                             // gibt ja keine einzelne Vorlage mehr, deren Namen
                             // ich übernehmen könnte), darunter liste ich ALLE
@@ -786,7 +824,7 @@ export function ChecklistenPage() {
                                                                 <>
                                                                     <span className="text-muted">[{phase}]</span> {text}
                                                                     {optional && (
-                                                                        <Badge bg="light" text="dark" className="ms-2 border">
+                                                                        <Badge bg="secondary" className="ms-2">
                                                                             optional
                                                                         </Badge>
                                                                     )}
@@ -824,7 +862,9 @@ export function ChecklistenPage() {
                                     Auswahl als eigene Vorlage speichern
                                 </Button>
                             </>
-                        ) : (
+                        )}
+
+                        {!zeigeVorlageModus && !zeigeBaukastenModus && (
                             // Manueller Modus (oder Bearbeiten): Titel + eine
                             // dynamische Liste von Item-Textfeldern.
                             <>

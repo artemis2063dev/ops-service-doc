@@ -8,8 +8,27 @@ import './index.css'
 // so kann ich einzelne Bootstrap-Stile in App.css gezielt überschreiben.
 import 'bootstrap/dist/css/bootstrap.min.css'
 
+// HUD-Theme (Farben, Schriften, Bootstrap-Overrides) - muss NACH Bootstrap kommen
+import './theme.css'
+
+// Bootstrap-Bausteine im HUD-Look (Tabellen, Modals, Tabs, Badges, ...)
+import './hud-components.css'
+
 import { AuthProvider } from './auth/AuthContext'
 import App from './App.tsx'
+
+// Klick-Puls: Ich höre einmal global auf Klicks (Event-Delegation) und setze bei
+// einem Button kurz die Klasse "hud-puls". Das CSS dazu steht in hud-components.css.
+// So muss ich keinen einzelnen Button anfassen.
+document.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>('.btn')
+    if (!button) return
+    // Klasse erst entfernen und neu setzen, damit auch schnelles Doppelklicken neu pulst
+    button.classList.remove('hud-puls')
+    void button.offsetWidth // erzwingt ein Neuberechnen, sonst startet die Animation nicht neu
+    button.classList.add('hud-puls')
+    button.addEventListener('animationend', () => button.classList.remove('hud-puls'), { once: true })
+})
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>

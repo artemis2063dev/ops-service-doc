@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap';
+import HudPanel from '../components/HudPanel';
 import { api, ApiError } from '../api/api';
 import { formatiereDatum, ticketStatusBadgeVariante } from '../utils/formatierung';
 import {
@@ -87,8 +88,29 @@ export function TicketsPage() {
     // wenn die Komponente zum ersten Mal gerendert wird - nicht bei jedem
     // Re-Render (z.B. wenn sich "tickets" selbst ändert, das würde sonst
     // eine Endlosschleife auslösen).
+    // Die Anfrage steht hier direkt im Effect (statt ladeTickets() aufzurufen):
+    // React will, dass State im Effect nur in einem Callback gesetzt wird, wenn
+    // die Daten ankommen - nicht synchron beim Start des Effects. `abgebrochen`
+    // verhindert, dass ich State setze, wenn die Seite schon verlassen wurde.
     useEffect(() => {
-        void ladeTickets();
+        let abgebrochen = false;
+        api.get<TicketDto[]>('/api/tickets')
+            .then((geladeneTickets) => {
+                if (abgebrochen) return;
+                setTickets(geladeneTickets);
+                setFehler(null);
+            })
+            .catch((error) => {
+                if (abgebrochen) return;
+                setFehler('Tickets konnten nicht geladen werden.');
+                console.error(error);
+            })
+            .finally(() => {
+                if (!abgebrochen) setLoading(false);
+            });
+        return () => {
+            abgebrochen = true;
+        };
     }, []);
 
     // Wird vom "Aus GLPI synchronisieren"-Button aufgerufen. Ruft den
@@ -205,7 +227,8 @@ export function TicketsPage() {
             {tickets.length === 0 ? (
                 <p className="text-muted">Noch keine Tickets vorhanden.</p>
             ) : (
-                <Table striped hover responsive>
+                <HudPanel title="Ticketliste">
+<Table hover responsive className="hud-table">
                     <thead>
                     <tr>
                         <th>Titel</th>
@@ -244,6 +267,7 @@ export function TicketsPage() {
                     ))}
                     </tbody>
                 </Table>
+</HudPanel>
             )}
 
             {/* EIN Modal für Anlegen UND Bearbeiten statt zwei getrennter

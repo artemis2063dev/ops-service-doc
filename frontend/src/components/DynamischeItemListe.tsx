@@ -31,11 +31,17 @@ export function DynamischeItemListe({
     onEntfernen,
     onHinzufuegen,
     platzhalterPraefix = 'Punkt',
-}: DynamischeItemListeProps) {
+}: Readonly<DynamischeItemListeProps>) {
     return (
         <>
             {werte.map((wert, index) => (
-                <div key={index} className="d-flex gap-2 mb-2">
+                <div
+                    // NOSONAR: Index als key ist hier korrekt - die Einträge sind reine
+                    // Textfelder ohne eigene ID, werden nie umsortiert und der Text liegt
+                    // im State der aufrufenden Seite (controlled input).
+                    key={index}
+                    className="d-flex gap-2 mb-2"
+                >
                     <Form.Control
                         type="text"
                         placeholder={`${platzhalterPraefix} ${index + 1}`}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Col, Form, Row, Spinner } from 'react-bootstrap';
+import HudPanel from '../components/HudPanel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/api';
 import { ladeDateiHerunter } from '../utils/download';
@@ -63,24 +64,30 @@ export function IpdDocumentPage() {
     // ergänzt).
     const [erfolg, setErfolg] = useState<string | null>(null);
 
-    async function ladeDokument() {
-        if (!id) return;
-        try {
-            const geladenesDokument = await api.get<IpdDocumentDto>(`/api/ipd/${id}`);
-            setDokument(geladenesDokument);
-            setFormular(formularAusDokument(geladenesDokument));
-            setFehler(null);
-        } catch (error) {
-            setFehler('IPD-Dokument konnte nicht geladen werden.');
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    }
-
+    // Dokument beim Öffnen (und bei geänderter id) laden: Anfrage direkt im Effect,
+    // State nur im Callback. `abgebrochen` verhindert, dass eine späte Antwort eines
+    // alten Dokuments das neue überschreibt.
     useEffect(() => {
-        void ladeDokument();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (!id) return;
+        let abgebrochen = false;
+        api.get<IpdDocumentDto>(`/api/ipd/${id}`)
+            .then((geladenesDokument) => {
+                if (abgebrochen) return;
+                setDokument(geladenesDokument);
+                setFormular(formularAusDokument(geladenesDokument));
+                setFehler(null);
+            })
+            .catch((error) => {
+                if (abgebrochen) return;
+                setFehler('IPD-Dokument konnte nicht geladen werden.');
+                console.error(error);
+            })
+            .finally(() => {
+                if (!abgebrochen) setLoading(false);
+            });
+        return () => {
+            abgebrochen = true;
+        };
     }, [id]);
 
     // Generischer Change-Handler für alle Textarea-Felder: erspart mir
@@ -199,7 +206,7 @@ export function IpdDocumentPage() {
                     </Badge>
                 </div>
                 <div className="d-flex gap-2">
-                    <Button variant="outline-primary" onClick={handlePdfHerunterladen} disabled={pdfLaeuft}>
+                    <Button variant="primary" onClick={handlePdfHerunterladen} disabled={pdfLaeuft}>
                         {pdfLaeuft ? 'Erzeuge PDF…' : 'PDF herunterladen'}
                     </Button>
                     <Button
@@ -222,8 +229,8 @@ export function IpdDocumentPage() {
             eigenen Card an - hier zu tippen hätte ohnehin keinen Effekt,
             da das Backend sie bei jedem Speichern aus Ticket/Task/
             Checklist neu berechnet (siehe IpdDocumentService). */}
-            <Card className="mb-4 bg-light">
-                <Card.Body>
+            <HudPanel title="Übersicht" className="mb-4">
+                <div>
                     <Row>
                         <Col md={4}>
                             <strong>Techniker:</strong> {dokument.techniker}
@@ -236,7 +243,7 @@ export function IpdDocumentPage() {
                             {dokument.qualitaetssicherungAbgeschlossen ? (
                                 <Badge bg="success">Durchgeführt</Badge>
                             ) : (
-                                <Badge bg="warning" text="dark">
+                                <Badge bg="warning">
                                     Noch offen
                                 </Badge>
                             )}
@@ -262,8 +269,8 @@ export function IpdDocumentPage() {
                             </Col>
                         </Row>
                     )}
-                </Card.Body>
-            </Card>
+                </div>
+            </HudPanel>
 
             {/* Manuell zu pflegende Abschnitte - ich gruppiere sie in
             Cards passend zur Gliederung eines echten IPD-Dokuments
@@ -271,9 +278,7 @@ export function IpdDocumentPage() {
             Nachbereitung), statt 15 Textfelder untereinander ohne
             Struktur zu zeigen. */}
             <Form>
-                <Card className="mb-3">
-                    <Card.Header>Rahmendaten</Card.Header>
-                    <Card.Body>
+                <HudPanel title="Rahmendaten" className="mb-3">
                         <Row>
                             <Col md={6}>
                                 <Form.Group className="mb-3">
@@ -320,12 +325,9 @@ export function IpdDocumentPage() {
                                 </Form.Group>
                             </Col>
                         </Row>
-                    </Card.Body>
-                </Card>
+                    </HudPanel>
 
-                <Card className="mb-3">
-                    <Card.Header>Ausgangslage &amp; Anforderungen</Card.Header>
-                    <Card.Body>
+                <HudPanel title="Ausgangslage &amp; Anforderungen" className="mb-3">
                         <Form.Group className="mb-3">
                             <Form.Label>Ausgangslage</Form.Label>
                             <Form.Control
@@ -344,12 +346,9 @@ export function IpdDocumentPage() {
                                 onChange={(e) => handleFeldAendern('anforderungen', e.target.value)}
                             />
                         </Form.Group>
-                    </Card.Body>
-                </Card>
+                    </HudPanel>
 
-                <Card className="mb-3">
-                    <Card.Header>Technische Details</Card.Header>
-                    <Card.Body>
+                <HudPanel title="Technische Details" className="mb-3">
                         <Form.Group className="mb-3">
                             <Form.Label>Infrastruktur-Übersicht</Form.Label>
                             <Form.Control
@@ -404,12 +403,9 @@ export function IpdDocumentPage() {
                                 onChange={(e) => handleFeldAendern('securityUeberlegungen', e.target.value)}
                             />
                         </Form.Group>
-                    </Card.Body>
-                </Card>
+                    </HudPanel>
 
-                <Card className="mb-3">
-                    <Card.Header>Nachbereitung</Card.Header>
-                    <Card.Body>
+                <HudPanel title="Nachbereitung" className="mb-3">
                         <Form.Group className="mb-3">
                             <Form.Label>Entscheidungen</Form.Label>
                             <Form.Control
@@ -437,12 +433,9 @@ export function IpdDocumentPage() {
                                 onChange={(e) => handleFeldAendern('rollbackPlan', e.target.value)}
                             />
                         </Form.Group>
-                    </Card.Body>
-                </Card>
+                    </HudPanel>
 
-                <Card className="mb-4">
-                    <Card.Header>Status</Card.Header>
-                    <Card.Body>
+                <HudPanel title="Status" className="mb-4">
                         <Form.Group style={{ maxWidth: 320 }}>
                             <Form.Label>Status</Form.Label>
                             <Form.Select
@@ -458,8 +451,7 @@ export function IpdDocumentPage() {
                                 ))}
                             </Form.Select>
                         </Form.Group>
-                    </Card.Body>
-                </Card>
+                    </HudPanel>
 
                 <Button variant="primary" onClick={handleSpeichern} disabled={speichernLaeuft || !formular.titel}>
                     {speichernLaeuft ? 'Speichere…' : 'Speichern'}

@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,7 +82,7 @@ class TicketServiceTest {
         // aufgerufen worden sein, da schon Daten vorhanden waren
         // (verhindert, dass bei jedem Aufruf erneut Mock-Daten dazukommen).
         assertEquals(1, result.size());
-        verify(ticketRepository, org.mockito.Mockito.never()).saveAll(org.mockito.ArgumentMatchers.anyList());
+        verify(ticketRepository, never()).saveAll(org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test

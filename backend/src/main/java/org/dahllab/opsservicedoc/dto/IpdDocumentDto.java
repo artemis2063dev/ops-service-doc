@@ -1,7 +1,6 @@
 package org.dahllab.opsservicedoc.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import org.dahllab.opsservicedoc.model.IpdDocument;
 import org.dahllab.opsservicedoc.model.IpdDocumentStatus;
 import org.dahllab.opsservicedoc.model.SzenarioTyp;
 
