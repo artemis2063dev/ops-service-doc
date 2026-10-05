@@ -44,4 +44,35 @@ class GlpiConfigTest {
         assertEquals("test-user-token", glpiConfig.getUserToken());
 
     }
+
+    @Test
+    @DisplayName("GIVEN keine glpi.web-url WHEN resolveWebUrl THEN wird sie aus der API-URL abgeleitet")
+    void resolveWebUrl_leitetAusApiUrlAb() {
+        assertEquals("http://test-glpi", glpiConfig.resolveWebUrl());
+    }
+
+    @Test
+    @DisplayName("GIVEN explizite web-url WHEN resolveWebUrl THEN hat sie Vorrang")
+    void resolveWebUrl_bevorzugtExpliziteWebUrl() {
+        GlpiConfig config = new GlpiConfig();
+        config.setApiUrl("http://x/api.php/v1");
+        config.setWebUrl("http://glpi.example");
+        assertEquals("http://glpi.example", config.resolveWebUrl());
+    }
+
+    @Test
+    @DisplayName("GIVEN keine URLs WHEN resolveWebUrl THEN leerer String; apirest.php und reine URL werden unterstützt")
+    void resolveWebUrl_randfaelle() {
+        GlpiConfig config = new GlpiConfig();
+        assertEquals("", config.resolveWebUrl());
+        config.setApiUrl("http://h/glpi/apirest.php");
+        assertEquals("http://h/glpi", config.resolveWebUrl());
+        config.setApiUrl("http://h/plain");
+        assertEquals("http://h/plain", config.resolveWebUrl());
+        // Nicht aufgelöster Platzhalter (Umgebungsvariable fehlt) -> kein Link.
+        config.setApiUrl("${GLPI_API_URL}");
+        assertEquals("", config.resolveWebUrl());
+        config.setWebUrl("${GLPI_WEB_URL}");
+        assertEquals("", config.resolveWebUrl());
+    }
 }

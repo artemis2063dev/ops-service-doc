@@ -240,4 +240,29 @@ class IpdDocumentServiceTest {
         assertThat(result).isNotEmpty();
         assertThat(new String(result, 0, 4)).isEqualTo("%PDF");
     }
+
+    @Test
+    void generateChecklistPdf_erzeugtPdf_wennChecklisteVorhanden() {
+        when(ipdDocumentRepository.findById("doc-1")).thenReturn(Optional.of(baueLeeresDokument("doc-1", "ticket-1")));
+        Checklist checkliste = new Checklist("cl-1", "ticket-1", "Wartung",
+                List.of(new ChecklistItem("i-1", "USV geprüft", true), new ChecklistItem("i-2", "Backup geprüft", false)),
+                LocalDateTime.now(), null);
+        when(checklistRepository.findByTicketId("ticket-1")).thenReturn(List.of(checkliste));
+
+        byte[] result = ipdDocumentService.generateChecklistPdf("doc-1");
+
+        assertThat(new String(result, 0, 4)).isEqualTo("%PDF");
+        // Die Checkboxen sind echte Formularfelder (AcroForm).
+        assertThat(new String(result, java.nio.charset.StandardCharsets.ISO_8859_1)).contains("/AcroForm");
+    }
+
+    @Test
+    void generateChecklistPdf_wirftNoSuchElement_wennKeineChecklisteVorhanden() {
+        when(ipdDocumentRepository.findById("doc-1")).thenReturn(Optional.of(baueLeeresDokument("doc-1", "ticket-1")));
+        when(checklistRepository.findByTicketId("ticket-1")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> ipdDocumentService.generateChecklistPdf("doc-1"))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining("keine Checkliste");
+    }
 }

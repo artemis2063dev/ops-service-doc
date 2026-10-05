@@ -1,12 +1,14 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { Button, Container, Nav, Navbar } from 'react-bootstrap';
 import { useAuth } from '../auth/AuthContext';
+import { useGlpiUrl } from '../hooks/useGlpiUrl';
 
 // Gemeinsames Grundgerüst für alle Seiten: Navigation oben, darunter
 // der jeweilige Seiteninhalt über <Outlet /> (React-Router rendert hier
 // die aktuell passende Route hinein, siehe App.tsx).
 export function Layout() {
-    const { username, loading, loginUrl, logout } = useAuth();
+    const { username, loading, logout } = useAuth();
+    const glpiUrl = useGlpiUrl(Boolean(username));
 
     return (
         <>
@@ -26,22 +28,24 @@ export function Layout() {
                                 <Nav.Link as={NavLink} to="/tasks">TaskPlanner</Nav.Link>
                                 <Nav.Link as={NavLink} to="/checklisten">Checklisten</Nav.Link>
                                 <Nav.Link as={NavLink} to="/ipd">IPD-Generator</Nav.Link>
+                                {/* GLPI ist ein externes System: öffnet in neuem Tab. */}
+                                {glpiUrl && (
+                                    <Nav.Link href={glpiUrl} target="_blank" rel="noopener noreferrer">
+                                        GLPI ↗
+                                    </Nav.Link>
+                                )}
                             </Nav>
                         )}
                         <Nav>
-                            {!loading && (
-                                username ? (
-                                    <div className="d-flex align-items-center gap-3">
-                                        <span className="text-light">Angemeldet als {username}</span>
-                                        <Button variant="outline-light" size="sm" onClick={logout}>
-                                            Logout
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <Button variant="outline-light" size="sm" href={loginUrl}>
-                                        Login mit GitHub
+                            {/* Der Login-Button steht nur noch in der Mitte der
+                            Startseite (Home.tsx), nicht mehr hier in der Navbar. */}
+                            {!loading && username && (
+                                <div className="d-flex align-items-center gap-3">
+                                    <span className="text-light">Angemeldet als {username}</span>
+                                    <Button variant="outline-light" size="sm" onClick={logout}>
+                                        Logout
                                     </Button>
-                                )
+                                </div>
                             )}
                         </Nav>
                     </Navbar.Collapse>
