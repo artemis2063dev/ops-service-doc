@@ -40,9 +40,16 @@ export function Home() {
                             <Card.Body>
                                 <Card.Title>{bereich.titel}</Card.Title>
                                 <Card.Text>{bereich.text}</Card.Text>
-                                <Button as={Link as never} to={bereich.link} variant="outline-primary">
+                                {/* Ich nehme hier den React-Router-Link mit den
+                                Bootstrap-Button-Klassen statt <Button as={Link}>:
+                                die Kombination war für TypeScript nicht sauber
+                                typisierbar (vorher stand hier ein 'as never'-Cast,
+                                der tsc -b und damit npm run build brechen ließ).
+                                Optisch ist es derselbe Button, der Link navigiert
+                                weiterhin clientseitig ohne Seiten-Neuladen. */}
+                                <Link to={bereich.link} className="btn btn-outline-primary">
                                     Öffnen
-                                </Button>
+                                </Link>
                             </Card.Body>
                         </Card>
                     </Col>
