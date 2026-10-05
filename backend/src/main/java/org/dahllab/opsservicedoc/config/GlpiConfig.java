@@ -18,6 +18,8 @@ public class GlpiConfig {
     private String apiUrl;
     private String appToken;
     private String userToken;
+    // Optional: Adresse der GLPI-Weboberfläche (für den Link im Frontend).
+    private String webUrl;
 
 
     // Getter/Setter werden von Spring Boot für die automatische Befüllung
@@ -45,6 +47,39 @@ public class GlpiConfig {
 
     public void setUserToken(String userToken) {
         this.userToken = userToken;
+    }
+
+    public String getWebUrl() {
+        return webUrl;
+    }
+
+    public void setWebUrl(String webUrl) {
+        this.webUrl = webUrl;
+    }
+
+    // Adresse der GLPI-Weboberfläche: entweder explizit über glpi.web-url
+    // gesetzt, sonst aus der API-URL abgeleitet (".../api.php/v1" bzw.
+    // ".../apirest.php" abschneiden). Ich liefere nur echte http(s)-URLs
+    // zurück: ist die Umgebungsvariable nicht gesetzt, bleibt bei
+    // @ConfigurationProperties der Platzhalter "${GLPI_API_URL}" als
+    // Text stehen - der würde im Frontend als relativer Link enden.
+    // Dann gebe ich lieber "" zurück, und das Frontend blendet den Link aus.
+    public String resolveWebUrl() {
+        if (istEchteUrl(webUrl)) {
+            return webUrl;
+        }
+        if (!istEchteUrl(apiUrl)) {
+            return "";
+        }
+        int index = apiUrl.indexOf("/api.php");
+        if (index < 0) {
+            index = apiUrl.indexOf("/apirest.php");
+        }
+        return index > 0 ? apiUrl.substring(0, index) : apiUrl;
+    }
+
+    private static boolean istEchteUrl(String wert) {
+        return wert != null && (wert.startsWith("http://") || wert.startsWith("https://"));
     }
 
     // Stellt den fertig konfigurierten RestClient als Spring-Bean bereit.

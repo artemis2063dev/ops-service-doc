@@ -11,6 +11,9 @@ import org.dahllab.opsservicedoc.repository.ChecklistRepository;
 import org.dahllab.opsservicedoc.repository.IpdDocumentRepository;
 import org.dahllab.opsservicedoc.repository.TaskRepository;
 import org.dahllab.opsservicedoc.repository.TicketRepository;
+import org.dahllab.opsservicedoc.dto.ChecklistDto;
+import org.dahllab.opsservicedoc.util.ChecklistMapper;
+import org.dahllab.opsservicedoc.util.ChecklistPdfGenerator;
 import org.dahllab.opsservicedoc.util.IpdDocumentMapper;
 import org.dahllab.opsservicedoc.util.IpdPdfGenerator;
 import org.springframework.stereotype.Service;
@@ -164,6 +167,20 @@ public class IpdDocumentService {
     public byte[] generatePdf(String id) {
         IpdDocumentDto dokument = getIpdDocumentById(id);
         return IpdPdfGenerator.erzeugePdf(dokument);
+    }
+
+    // GET /api/ipd/{id}/checklist-pdf - interne Technikerversion der
+    // Checklisten zu diesem Dokument (druckbar / am Tablet ausfüllbar).
+    // Ohne Checkliste gibt es nichts zu exportieren -> 404.
+    public byte[] generateChecklistPdf(String id) {
+        IpdDocumentDto dokument = getIpdDocumentById(id);
+        List<ChecklistDto> checklisten = checklistRepository.findByTicketId(dokument.ticketId()).stream()
+                .map(ChecklistMapper::toDto)
+                .toList();
+        if (checklisten.isEmpty()) {
+            throw new NoSuchElementException("Zu diesem IPD-Dokument gibt es keine Checkliste");
+        }
+        return ChecklistPdfGenerator.erzeugePdf(dokument, checklisten);
     }
 
     // Ermittelt automatisch, ob die interne Qualitätssicherung für

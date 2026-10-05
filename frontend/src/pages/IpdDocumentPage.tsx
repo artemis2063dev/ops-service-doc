@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/api';
+import { ladeDateiHerunter } from '../utils/download';
 import { formatiereDatum, ipdStatusBadgeVariante } from '../utils/formatierung';
 import {
     IPD_DOCUMENT_STATUS_LABELS,
@@ -52,6 +53,7 @@ export function IpdDocumentPage() {
     const [loading, setLoading] = useState(true);
     const [speichernLaeuft, setSpeichernLaeuft] = useState(false);
     const [pdfLaeuft, setPdfLaeuft] = useState(false);
+    const [checklisteLaeuft, setChecklisteLaeuft] = useState(false);
     const [fehler, setFehler] = useState<string | null>(null);
     // Separate Erfolgsmeldung statt nur eines Fehlerfelds, damit ich dem
     // Nutzer nach dem Speichern kurz sichtbares Feedback geben kann,
@@ -120,41 +122,40 @@ export function IpdDocumentPage() {
         }
     }
 
-    // Lädt das PDF als Blob herunter und stößt den Browser-Download an.
-    // Normales <a href="/api/ipd/.../pdf"> würde zwar durch den
-    // Vite-Proxy auch funktionieren, aber ich nutze bewusst fetch mit
-    // credentials:'include' + Blob/ObjectURL - so laufe ich nicht
-    // Gefahr, dass der Link irgendwann (z.B. bei einem eigenen Server
-    // ohne Proxy) ohne Session-Cookie aufgerufen wird und nur einen
-    // 401-Fehler als "PDF" herunterlädt.
+    // Lädt das Kunden-PDF herunter (siehe utils/download.ts für das
+    // Blob/ObjectURL-Verfahren).
     async function handlePdfHerunterladen() {
         if (!dokument) return;
         setPdfLaeuft(true);
         setFehler(null);
         try {
-            const response = await fetch(`/api/ipd/${dokument.id}/pdf`, { credentials: 'include' });
-            if (!response.ok) {
-                throw new ApiError(response.status, response.statusText);
-            }
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-
-            // Flüchtigen Download-Link erzeugen, klicken, wieder
-            // entfernen - gleiches Muster wie beim Logout-Formular in
-            // AuthContext, nur hier für einen Datei-Download statt
-            // eines POST-Requests.
-            const link = document.createElement('a');
-            link.href = objectUrl;
-            link.download = `ipd-${dokument.id}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(objectUrl);
+            await ladeDateiHerunter(`/api/ipd/${dokument.id}/pdf`, `ipd-${dokument.id}.pdf`);
         } catch (error) {
             setFehler('PDF konnte nicht erzeugt werden.');
             console.error(error);
         } finally {
             setPdfLaeuft(false);
+        }
+    }
+
+    // Lädt die interne Checkliste (Technikerversion mit ausfüllbaren
+    // Checkboxen) herunter - getrennt vom Kunden-PDF. 404 heißt: zu diesem
+    // Ticket gibt es (noch) keine Checkliste.
+    async function handleChecklisteHerunterladen() {
+        if (!dokument) return;
+        setChecklisteLaeuft(true);
+        setFehler(null);
+        try {
+            await ladeDateiHerunter(`/api/ipd/${dokument.id}/checklist-pdf`, `checkliste-${dokument.id}.pdf`);
+        } catch (error) {
+            if (error instanceof ApiError && error.status === 404) {
+                setFehler('Zu diesem Dokument gibt es noch keine Checkliste.');
+            } else {
+                setFehler('Checkliste konnte nicht erzeugt werden.');
+            }
+            console.error(error);
+        } finally {
+            setChecklisteLaeuft(false);
         }
     }
 
@@ -200,6 +201,13 @@ export function IpdDocumentPage() {
                 <div className="d-flex gap-2">
                     <Button variant="outline-primary" onClick={handlePdfHerunterladen} disabled={pdfLaeuft}>
                         {pdfLaeuft ? 'Erzeuge PDF…' : 'PDF herunterladen'}
+                    </Button>
+                    <Button
+                        variant="outline-secondary"
+                        onClick={handleChecklisteHerunterladen}
+                        disabled={checklisteLaeuft}
+                    >
+                        {checklisteLaeuft ? 'Erzeuge Checkliste…' : 'Checkliste herunterladen'}
                     </Button>
                     <Button variant="outline-danger" onClick={handleLoeschen}>
                         Löschen

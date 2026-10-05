@@ -143,4 +143,26 @@ public class IpdDocumentController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ipd-" + id + ".pdf\"")
                 .body(pdf);
     }
+
+    // GET /api/ipd/{id}/checklist-pdf - interne Checkliste für den
+    // Techniker als separater Download (Kunden-PDF bleibt unverändert).
+    @Operation(
+            summary = "Checkliste als PDF herunterladen",
+            description = "Erzeugt aus den Checklisten zum Ticket des IPD-Dokuments ein internes PDF mit " +
+                    "ausfüllbaren Checkboxen (zum Ausdrucken oder Bearbeiten am Tablet). " +
+                    "Nicht für den Kunden bestimmt."
+    )
+    @ApiResponse(responseCode = "200", description = "PDF wurde erzeugt",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE))
+    @ApiResponse(responseCode = "404", description = "Kein IPD-Dokument oder keine Checkliste vorhanden", content = @Content)
+    @GetMapping("/{id}/checklist-pdf")
+    public ResponseEntity<byte[]> downloadChecklistPdf(
+            @Parameter(description = "ID des IPD-Dokuments") @PathVariable String id) {
+        byte[] pdf = ipdDocumentService.generateChecklistPdf(id);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"checkliste-" + id + ".pdf\"")
+                .body(pdf);
+    }
 }
