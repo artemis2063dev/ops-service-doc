@@ -173,4 +173,13 @@ class ChecklistControllerTest {
         mockMvc.perform(delete("/api/checklists/" + gespeicherteChecklist.getId()).with(oauth2Login()))
                 .andExpect(status().isNoContent());
     }
+
+    // Prüft, dass der Endpunkt ohne Login geschützt ist - die SecurityConfig
+    // sichert alle Pfade unter /api/ ab. Ohne diesen Test würde es nicht
+    // auffallen, wenn ein neuer Controller versehentlich offen bliebe.
+    @Test
+    void getAllChecklists_gibt401_wennNichtEingeloggt() throws Exception {
+        mockMvc.perform(get("/api/checklists"))
+                .andExpect(status().isUnauthorized());
+    }
 }

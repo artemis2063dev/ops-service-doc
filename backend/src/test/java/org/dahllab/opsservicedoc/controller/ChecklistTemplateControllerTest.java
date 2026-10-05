@@ -152,4 +152,13 @@ class ChecklistTemplateControllerTest {
 
         assertThat(checklistTemplateRepository.existsById(standardTemplate.getId())).isTrue();
     }
+
+    // Prüft, dass der Endpunkt ohne Login geschützt ist - die SecurityConfig
+    // sichert alle Pfade unter /api/ ab. Ohne diesen Test würde es nicht
+    // auffallen, wenn ein neuer Controller versehentlich offen bliebe.
+    @Test
+    void getAllTemplates_gibt401_wennNichtEingeloggt() throws Exception {
+        mockMvc.perform(get("/api/checklist-templates"))
+                .andExpect(status().isUnauthorized());
+    }
 }
