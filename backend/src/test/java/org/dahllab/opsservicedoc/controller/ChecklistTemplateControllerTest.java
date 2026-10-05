@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -88,7 +89,7 @@ class ChecklistTemplateControllerTest {
     @Test
     void getTemplateById_gibtVorlageZurueck_wennIdExistiert() throws Exception {
         ChecklistTemplate gespeicherteTemplate = checklistTemplateRepository.save(
-                new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft")));
+                new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft"), false));
 
         mockMvc.perform(get("/api/checklist-templates/" + gespeicherteTemplate.getId()).with(oauth2Login()))
                 .andExpect(status().isOk())
@@ -108,7 +109,7 @@ class ChecklistTemplateControllerTest {
     @Test
     void putTemplate_aktualisiertVorlage() throws Exception {
         ChecklistTemplate gespeicherteTemplate = checklistTemplateRepository.save(
-                new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft")));
+                new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft"), false));
 
         String requestBody = """
                 {
@@ -130,9 +131,34 @@ class ChecklistTemplateControllerTest {
     @Test
     void deleteTemplate_entferntVorlage_undGibt204Zurueck() throws Exception {
         ChecklistTemplate gespeicherteTemplate = checklistTemplateRepository.save(
-                new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft")));
+                new ChecklistTemplate(null, "Server-Wartung Standard", List.of("USV geprüft"), false));
 
         mockMvc.perform(delete("/api/checklist-templates/" + gespeicherteTemplate.getId()).with(oauth2Login()))
                 .andExpect(status().isNoContent());
+    }
+
+    // Prüft den Löschschutz: eine Standard-Vorlage (standard=true, wie sie
+    // der ChecklistTemplateSeeder anlegt) darf nicht gelöscht werden - der
+    // GlobalExceptionHandler muss die IllegalStateException aus dem Service
+    // als 409 Conflict ausliefern, und die Vorlage muss danach noch
+    // existieren.
+    @Test
+    void deleteTemplate_gibt409_beiStandardVorlage() throws Exception {
+        ChecklistTemplate standardTemplate = checklistTemplateRepository.save(
+                new ChecklistTemplate(null, "Server", List.of("[Vorbereitung] Backup prüfen"), true));
+
+        mockMvc.perform(delete("/api/checklist-templates/" + standardTemplate.getId()).with(oauth2Login()))
+                .andExpect(status().isConflict());
+
+        assertThat(checklistTemplateRepository.existsById(standardTemplate.getId())).isTrue();
+    }
+
+    // Prüft, dass der Endpunkt ohne Login geschützt ist - die SecurityConfig
+    // sichert alle Pfade unter /api/ ab. Ohne diesen Test würde es nicht
+    // auffallen, wenn ein neuer Controller versehentlich offen bliebe.
+    @Test
+    void getAllTemplates_gibt401_wennNichtEingeloggt() throws Exception {
+        mockMvc.perform(get("/api/checklist-templates"))
+                .andExpect(status().isUnauthorized());
     }
 }

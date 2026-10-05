@@ -10,6 +10,11 @@ public class ChecklistTemplateMapper {
     }
 
     public static ChecklistTemplateDto toDto(ChecklistTemplate template) {
-        return new ChecklistTemplateDto(template.getId(), template.getName(), template.getItemBeschreibungen());
+        return new ChecklistTemplateDto(
+                template.getId(),
+                template.getName(),
+                template.getItemBeschreibungen(),
+                template.isStandard()
+        );
     }
 }

@@ -42,14 +42,16 @@ public class SecurityConfig {
                 // WICHTIG: Die Reihenfolge zählt! Spring prüft von oben nach unten
                 // und nimmt die erste passende Regel - spezifische Regeln müssen VOR allgemeinen stehen
                 .authorizeHttpRequests(req -> req
-                        // Ticket-Endpoints: nur für eingeloggte Nutzer sichtbar
-                        .requestMatchers("/api/tickets/**").authenticated()
-                        // Task-Endpoints (dein TaskPlanner-Bereich): ebenfalls nur eingeloggt
-                        .requestMatchers("/api/tasks/**").authenticated()
-                        // IPD-Generator-Endpoints: ebenfalls nur eingeloggt
-                        .requestMatchers("/api/ipd/**").authenticated()
-                        // Auskunft über den eigenen eingeloggten User: auch nur eingeloggt
-                        .requestMatchers("/api/auth/me").authenticated()
+                        // ALLE Endpoints unter /api/ nur für eingeloggte Nutzer.
+                        // Vorher hatte ich jeden Controller einzeln aufgelistet
+                        // (tickets, tasks, ipd, auth/me) - dabei habe ich die
+                        // Checklisten und Checklisten-Vorlagen vergessen, die
+                        // dadurch ohne Login erreichbar waren (anyRequest().permitAll()
+                        // unten). Mit dem Muster /api/** ist ein neuer Controller
+                        // automatisch geschützt, und ich muss hier nichts mehr
+                        // nachtragen. Login-Pfade (/oauth2/**, /login/**) liegen
+                        // außerhalb von /api/ und bleiben dadurch zugänglich.
+                        .requestMatchers("/api/**").authenticated()
                         // Alles andere (z.B. die Login-Weiterleitung selbst) für jeden zugänglich
                         .anyRequest().permitAll()
                 )
@@ -66,7 +68,7 @@ public class SecurityConfig {
                 // Aktiviert den OAuth2-Login-Flow (GitHub, wie in application.properties konfiguriert).
                 // defaultSuccessUrl: wohin der Browser nach erfolgreichem Login weitergeleitet wird -
                 // hier zurück zu meinem laufenden React-Frontend
-                .oauth2Login(o -> o.defaultSuccessUrl(frontendUrl + "/"))
+                .oauth2Login(o -> o.defaultSuccessUrl(frontendUrl + "/", true))
 
                 // Wohin nach dem Logout weitergeleitet wird - ebenfalls zurück zum Frontend
                 .logout(logout -> logout.logoutSuccessUrl(frontendUrl + "/"));

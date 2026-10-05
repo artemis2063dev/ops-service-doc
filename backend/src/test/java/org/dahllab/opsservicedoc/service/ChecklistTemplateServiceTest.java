@@ -36,7 +36,7 @@ class ChecklistTemplateServiceTest {
     @Test
     void getAllTemplates_gibtAlleVorlagenZurueck() {
         ChecklistTemplate template = new ChecklistTemplate("template-1", "Server-Wartung Standard",
-                List.of("USV geprüft"));
+                List.of("USV geprüft"), false);
         when(checklistTemplateRepository.findAll()).thenReturn(List.of(template));
 
         List<ChecklistTemplateDto> result = checklistTemplateService.getAllTemplates();
@@ -49,7 +49,7 @@ class ChecklistTemplateServiceTest {
     @Test
     void getTemplateById_gibtVorlageZurueck_wennIdExistiert() {
         ChecklistTemplate template = new ChecklistTemplate("template-1", "Server-Wartung Standard",
-                List.of("USV geprüft"));
+                List.of("USV geprüft"), false);
         when(checklistTemplateRepository.findById("template-1")).thenReturn(Optional.of(template));
 
         ChecklistTemplateDto result = checklistTemplateService.getTemplateById("template-1");
@@ -71,7 +71,7 @@ class ChecklistTemplateServiceTest {
     @Test
     void createTemplate_legtNeueVorlageAn() {
         ChecklistTemplateDto templateDto = new ChecklistTemplateDto(null, "Server-Wartung Standard",
-                List.of("USV geprüft"));
+                List.of("USV geprüft"), false);
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -86,13 +86,13 @@ class ChecklistTemplateServiceTest {
     @Test
     void updateTemplate_aktualisiertBestehendeVorlage() {
         ChecklistTemplate bestehendeTemplate = new ChecklistTemplate("template-1", "Server-Wartung Standard",
-                List.of("USV geprüft"));
+                List.of("USV geprüft"), false);
         when(checklistTemplateRepository.findById("template-1")).thenReturn(Optional.of(bestehendeTemplate));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         ChecklistTemplateDto templateDto = new ChecklistTemplateDto(null, "Server-Wartung Erweitert",
-                List.of("USV geprüft", "Backup getestet"));
+                List.of("USV geprüft", "Backup getestet"), false);
 
         ChecklistTemplateDto result = checklistTemplateService.updateTemplate("template-1", templateDto);
 
@@ -106,7 +106,7 @@ class ChecklistTemplateServiceTest {
     void updateTemplate_wirftException_wennIdNichtExistiert() {
         when(checklistTemplateRepository.findById("unbekannt")).thenReturn(Optional.empty());
         ChecklistTemplateDto templateDto = new ChecklistTemplateDto(null, "Server-Wartung Standard",
-                List.of("USV geprüft"));
+                List.of("USV geprüft"), false);
 
         assertThatThrownBy(() -> checklistTemplateService.updateTemplate("unbekannt", templateDto))
                 .isInstanceOf(NoSuchElementException.class);
@@ -115,7 +115,9 @@ class ChecklistTemplateServiceTest {
     // Prüft den Erfolgsfall von deleteTemplate().
     @Test
     void deleteTemplate_loeschtVorlage_wennIdExistiert() {
-        when(checklistTemplateRepository.existsById("template-1")).thenReturn(true);
+        ChecklistTemplate template = new ChecklistTemplate("template-1", "Eigene Vorlage",
+                List.of("USV geprüft"), false);
+        when(checklistTemplateRepository.findById("template-1")).thenReturn(Optional.of(template));
 
         checklistTemplateService.deleteTemplate("template-1");
 
@@ -127,11 +129,58 @@ class ChecklistTemplateServiceTest {
     // still nichts tut.
     @Test
     void deleteTemplate_wirftException_wennIdNichtExistiert() {
-        when(checklistTemplateRepository.existsById("unbekannt")).thenReturn(false);
+        when(checklistTemplateRepository.findById("unbekannt")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> checklistTemplateService.deleteTemplate("unbekannt"))
                 .isInstanceOf(NoSuchElementException.class);
 
         verify(checklistTemplateRepository, never()).deleteById(any());
+    }
+
+    // Prüft den Löschschutz: eine Standard-Vorlage darf nicht gelöscht
+    // werden, deleteById darf dabei gar nicht erst aufgerufen werden.
+    @Test
+    void deleteTemplate_wirftException_beiStandardVorlage() {
+        ChecklistTemplate standardTemplate = new ChecklistTemplate("template-1", "Server",
+                List.of("USV geprüft"), true);
+        when(checklistTemplateRepository.findById("template-1")).thenReturn(Optional.of(standardTemplate));
+
+        assertThatThrownBy(() -> checklistTemplateService.deleteTemplate("template-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Server");
+
+        verify(checklistTemplateRepository, never()).deleteById(any());
+    }
+
+    // Prüft, dass createTemplate() ein vom Client mitgeschicktes
+    // standard=true ignoriert - sonst könnte sich jeder selbst eine
+    // unlöschbare Vorlage anlegen.
+    @Test
+    void createTemplate_ignoriertStandardFlagVomClient() {
+        ChecklistTemplateDto templateDto = new ChecklistTemplateDto(null, "Eigene Vorlage",
+                List.of("USV geprüft"), true);
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChecklistTemplateDto result = checklistTemplateService.createTemplate(templateDto);
+
+        assertThat(result.standard()).isFalse();
+    }
+
+    // Prüft, dass updateTemplate() den standard-Status der bestehenden
+    // Vorlage beibehält, egal was der Client im Request mitschickt.
+    @Test
+    void updateTemplate_behaeltStandardStatusDerBestehendenVorlage() {
+        ChecklistTemplate standardTemplate = new ChecklistTemplate("template-1", "Server",
+                List.of("USV geprüft"), true);
+        when(checklistTemplateRepository.findById("template-1")).thenReturn(Optional.of(standardTemplate));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        ChecklistTemplateDto templateDto = new ChecklistTemplateDto(null, "Server angepasst",
+                List.of("USV geprüft"), false);
+
+        ChecklistTemplateDto result = checklistTemplateService.updateTemplate("template-1", templateDto);
+
+        assertThat(result.standard()).isTrue();
     }
 }

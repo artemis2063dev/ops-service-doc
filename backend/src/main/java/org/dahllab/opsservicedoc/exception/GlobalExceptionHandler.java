@@ -29,4 +29,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleNoSuchElementException(NoSuchElementException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
+
+    // Wird z.B. von ChecklistTemplateService.deleteTemplate geworfen,
+    // wenn jemand versucht, eine der geschützten Standard-Vorlagen zu
+    // löschen. 409 Conflict passt hier besser als 400 Bad Request - die
+    // Anfrage selbst ist technisch korrekt aufgebaut, sie widerspricht
+    // nur dem aktuellen Zustand der Ressource (sie ist eine
+    // Standard-Vorlage und darf deshalb nicht gelöscht werden).
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleIllegalStateException(IllegalStateException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
 }

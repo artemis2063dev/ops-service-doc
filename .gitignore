@@ -3,6 +3,7 @@
 *.iml
 .env
 .env.local
+node_modules
 
 #backend
 /backend/.mvn
@@ -17,3 +18,7 @@ frontend/dist
 frontend/dist-ssr
 frontend/npm-debug.log*
 frontend/*.local
+
+#versehentlich im Projekt-Hauptordner entstanden (npm install bzw. Maven-Lauf im falschen Ordner)
+/node_modules
+/target
