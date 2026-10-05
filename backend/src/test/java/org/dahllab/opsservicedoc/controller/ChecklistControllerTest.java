@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -63,6 +64,7 @@ class ChecklistControllerTest {
 
         mockMvc.perform(post("/api/checklists")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -87,6 +89,7 @@ class ChecklistControllerTest {
 
         mockMvc.perform(post("/api/checklists")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -106,6 +109,7 @@ class ChecklistControllerTest {
 
         mockMvc.perform(post("/api/checklists")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -155,6 +159,7 @@ class ChecklistControllerTest {
 
         mockMvc.perform(put("/api/checklists/" + gespeicherteChecklist.getId())
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -170,7 +175,7 @@ class ChecklistControllerTest {
         Checklist gespeicherteChecklist = checklistRepository.save(new Checklist(null, "ticket-1",
                 "Server-Wartung", List.of(item), LocalDateTime.now(), null));
 
-        mockMvc.perform(delete("/api/checklists/" + gespeicherteChecklist.getId()).with(oauth2Login()))
+        mockMvc.perform(delete("/api/checklists/" + gespeicherteChecklist.getId()).with(oauth2Login()).with(csrf()))
                 .andExpect(status().isNoContent());
     }
 

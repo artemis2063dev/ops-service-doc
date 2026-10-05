@@ -17,14 +17,43 @@ export class ApiError extends Error {
     }
 }
 
+// Liest den Wert eines Cookies anhand seines Namens. Ich zerlege den
+// Cookie-String bewusst mit split statt mit einem regulären Ausdruck -
+// einfacher zu lesen und ohne Backtracking-Risiko.
+function lesCookie(name: string): string | null {
+    for (const eintrag of document.cookie.split(';')) {
+        const trenner = eintrag.indexOf('=');
+        if (trenner > 0 && eintrag.slice(0, trenner).trim() === name) {
+            return decodeURIComponent(eintrag.slice(trenner + 1).trim());
+        }
+    }
+    return null;
+}
+
+// CSRF-Schutz: Das Backend legt das Token als Cookie "XSRF-TOKEN" ab (siehe
+// SecurityConfig). Bei schreibenden Aufrufen (alles außer GET) schicke ich
+// es als Header "X-XSRF-TOKEN" zurück - nur meine eigene Seite kann das
+// Cookie lesen, eine fremde Seite kann den Header also nicht setzen.
+// Auch für das Logout-Formular in AuthContext exportiert.
+export function holeCsrfToken(): string | null {
+    return lesCookie('XSRF-TOKEN');
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const methode = (options.method ?? 'GET').toUpperCase();
+    const csrfToken = methode === 'GET' ? null : holeCsrfToken();
+
     const response = await fetch(path, {
         credentials: 'include',
+        ...options,
+        // headers stehen NACH dem Spread von options, damit sie von
+        // options.headers nicht überschrieben (und Content-Type/CSRF nicht
+        // verloren) werden - dabei bleiben zusätzliche Header erhalten.
         headers: {
             'Content-Type': 'application/json',
+            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
             ...options.headers,
         },
-        ...options,
     });
 
     if (!response.ok) {

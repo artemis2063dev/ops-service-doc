@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -72,7 +73,7 @@ class IpdDocumentControllerTest {
                 null, null, "Server-Wartung", "Beschreibung", TicketStatus.IN_BEARBEITUNG,
                 "Mia Muster", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now()));
 
-        mockMvc.perform(post("/api/ipd/from-ticket/" + gespeichertesTicket.getId()).with(oauth2Login()))
+        mockMvc.perform(post("/api/ipd/from-ticket/" + gespeichertesTicket.getId()).with(oauth2Login()).with(csrf()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.titel").value("Server-Wartung"))
                 .andExpect(jsonPath("$.techniker").value("Mia Muster"))
@@ -83,7 +84,7 @@ class IpdDocumentControllerTest {
     // 4xx-Fehler führen.
     @Test
     void postIpdDocumentFromTicket_gibt404Zurueck_wennTicketNichtExistiert() throws Exception {
-        mockMvc.perform(post("/api/ipd/from-ticket/unbekannt").with(oauth2Login()))
+        mockMvc.perform(post("/api/ipd/from-ticket/unbekannt").with(oauth2Login()).with(csrf()))
                 .andExpect(status().is4xxClientError());
     }
 
@@ -122,6 +123,7 @@ class IpdDocumentControllerTest {
 
         mockMvc.perform(put("/api/ipd/" + gespeichertesDokument.getId())
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -138,7 +140,7 @@ class IpdDocumentControllerTest {
                 SzenarioTyp.SERVER_WARTUNG, null, null, null, null, null, null, null, null, null,
                 null, null, "", null, null, null, false, LocalDateTime.now(), LocalDateTime.now()));
 
-        mockMvc.perform(delete("/api/ipd/" + gespeichertesDokument.getId()).with(oauth2Login()))
+        mockMvc.perform(delete("/api/ipd/" + gespeichertesDokument.getId()).with(oauth2Login()).with(csrf()))
                 .andExpect(status().isNoContent());
     }
 

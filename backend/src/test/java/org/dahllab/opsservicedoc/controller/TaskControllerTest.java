@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -73,6 +74,7 @@ class TaskControllerTest {
 
         mockMvc.perform(post("/api/tasks")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -96,6 +98,7 @@ class TaskControllerTest {
 
         mockMvc.perform(post("/api/tasks")
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
@@ -144,6 +147,7 @@ class TaskControllerTest {
 
         mockMvc.perform(put("/api/tasks/" + gespeicherterTask.getId())
                         .with(oauth2Login())
+                        .with(csrf())
                         .contentType("application/json")
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -158,7 +162,7 @@ class TaskControllerTest {
         Task gespeicherterTask = taskRepository.save(new Task(null, "ticket-1", "Backup prüfen",
                 "Logs checken", LocalDateTime.now(), LocalDate.now(), null, TaskStatus.OFFEN));
 
-        mockMvc.perform(delete("/api/tasks/" + gespeicherterTask.getId()).with(oauth2Login()))
+        mockMvc.perform(delete("/api/tasks/" + gespeicherterTask.getId()).with(oauth2Login()).with(csrf()))
                 .andExpect(status().isNoContent());
     }
 }
