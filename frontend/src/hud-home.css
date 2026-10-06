@@ -44,15 +44,16 @@
 .dash__aktion:hover { border-color: var(--hud-cyan); background: var(--hud-cyan-dim); color: var(--hud-text-strong); }
 
 /* ---------- ProgressRing ---------- */
-.progress-ring { --ring-farbe: var(--hud-cyan); position: relative; width: 92px; text-align: center; }
+.progress-ring { --ring-farbe: var(--hud-cyan); position: relative; width: 110px; text-align: center; }
 .progress-ring[data-ton='gold'] { --ring-farbe: var(--hud-gold); }
 .progress-ring[data-ton='rot'] { --ring-farbe: var(--hud-red); }
-.progress-ring svg { width: 92px; height: 92px; display: block; }
+.progress-ring svg { width: 92px; height: 92px; display: block; margin: 0 auto; }
 .progress-ring__bg { fill: none; stroke: rgba(70,104,138,0.35); stroke-width: 5; }
 .progress-ring__fg { fill: none; stroke: var(--ring-farbe); stroke-width: 5; stroke-linecap: butt; }
-.progress-ring__mitte { position: absolute; inset: 0; height: 92px; display: grid; place-items: center; }
+.progress-ring__mitte { position: absolute; inset: 0 0 auto 0; height: 92px; display: grid; place-items: center; }
 .progress-ring__wert { font-size: 1.05rem; color: var(--hud-text-strong); }
-.progress-ring__label { display: block; margin-top: 6px; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--hud-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Die Beschriftung darf umbrechen statt mit "..." abgeschnitten zu werden */
+.progress-ring__label { display: block; margin-top: 6px; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--hud-text-muted); white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 
 /* Das IPD-Panel nimmt auf großen Bildschirmen zwei Spalten ein, damit keine Lücke bleibt */
 @media (min-width: 1200px) { .dash__zweispaltig { grid-column: span 2; } }
@@ -65,8 +66,3 @@
   .dash__breit .dash__aktionen { grid-template-columns: 1fr; gap: 8px; }
   .dash__breit .dash__aktion { padding: 10px 14px; }
 }
-/* Ring-Beschriftung darf umbrechen statt mit "..." abgeschnitten zu werden */
-.progress-ring { width: 110px; }
-.progress-ring__label { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-.progress-ring svg { margin: 0 auto; }
-.progress-ring__mitte { inset: 0 0 auto 0; }

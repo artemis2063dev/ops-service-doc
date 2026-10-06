@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
     FaBars,
@@ -38,6 +38,20 @@ export function Layout() {
     const glpiUrl = useGlpiUrl(Boolean(username))
     // Steuert das mobile Vollbild-Menü
     const [menueOffen, setMenueOffen] = useState(false)
+    // Verweis auf das <dialog>-Element, damit ich es per showModal() öffnen kann
+    const dialogRef = useRef<HTMLDialogElement>(null)
+
+    // Sobald das Menü offen ist und das <dialog> gerendert wurde, öffne ich es als echtes
+    // modales Dialogfenster. Der Browser übernimmt dann Fokus-Falle, Esc-Taste und die
+    // Screenreader-Rolle (deshalb brauche ich weder role="dialog" noch aria-modal).
+    // Die Prüfung auf dialog.open verhindert einen Fehler, falls der Effect im
+    // StrictMode zweimal läuft.
+    useEffect(() => {
+        const dialog = dialogRef.current
+        if (menueOffen && dialog && !dialog.open) {
+            dialog.showModal()
+        }
+    }, [menueOffen])
 
     // Die Navigation zeige ich nur, wenn jemand eingeloggt ist - ohne Login
     // würden die Links ohnehin nur in einen 401 laufen (siehe SecurityConfig).
@@ -127,7 +141,14 @@ export function Layout() {
 
             {/* ---------- Mobiles Vollbild-Menü (Kacheln) ---------- */}
             {eingeloggt && menueOffen && (
-                <div className="hud-overlay" role="dialog" aria-modal="true" aria-label="Menü">
+                <dialog
+                    ref={dialogRef}
+                    className="hud-overlay"
+                    aria-label="Menü"
+                    // Esc schließt ein modales <dialog> von selbst - dann muss ich meinen
+                    // State nachziehen, sonst wäre menueOffen weiterhin true.
+                    onClose={() => setMenueOffen(false)}
+                >
                     <div className="hud-overlay__kopf">
                         <OsdLogo />
                         <button
@@ -166,7 +187,7 @@ export function Layout() {
                             </a>
                         )}
                     </div>
-                </div>
+                </dialog>
             )}
         </div>
     )

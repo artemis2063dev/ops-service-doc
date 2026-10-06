@@ -19,7 +19,8 @@ const RADIUS = 42
 // Umfang = 2 * pi * r - die Länge, die 100 % entspricht
 const UMFANG = 2 * Math.PI * RADIUS
 
-export function ProgressRing({ prozent, label, ton = 'cyan' }: ProgressRingProps) {
+// Readonly<...> markiert die Props als schreibgeschützt - ich darf sie in der Komponente nicht ändern
+export function ProgressRing({ prozent, label, ton = 'cyan' }: Readonly<ProgressRingProps>) {
     // Wert auf 0..100 begrenzen, damit ein Datenfehler den Ring nicht kaputt macht
     const wert = Math.max(0, Math.min(100, Math.round(prozent)))
     // So viel vom Umfang soll gefüllt sein

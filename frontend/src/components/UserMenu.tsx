@@ -16,7 +16,8 @@ interface UserMenuProps {
     drop?: 'up' | 'down'
 }
 
-export function UserMenu({ username, onLogout, drop = 'down' }: UserMenuProps) {
+// Readonly<...> markiert die Props als schreibgeschützt - ich darf sie in der Komponente nicht ändern
+export function UserMenu({ username, onLogout, drop = 'down' }: Readonly<UserMenuProps>) {
     // Merkt sich, ob das Avatar-Bild nicht geladen werden konnte
     const [avatarFehler, setAvatarFehler] = useState(false)
 

@@ -25,7 +25,10 @@ document.addEventListener('click', (event) => {
     if (!button) return
     // Klasse erst entfernen und neu setzen, damit auch schnelles Doppelklicken neu pulst
     button.classList.remove('hud-puls')
-    void button.offsetWidth // erzwingt ein Neuberechnen, sonst startet die Animation nicht neu
+    // Das Auslesen der Größe erzwingt ein Neuberechnen des Layouts (Reflow), sonst startet die
+    // Animation nicht neu. Ich nutze getBoundingClientRect() statt "void offsetWidth",
+    // weil SonarCloud den void-Operator als verwirrend markiert.
+    button.getBoundingClientRect()
     button.classList.add('hud-puls')
     button.addEventListener('animationend', () => button.classList.remove('hud-puls'), { once: true })
 })
