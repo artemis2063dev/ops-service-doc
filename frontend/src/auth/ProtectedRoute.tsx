@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
-import { useAuth } from './AuthContext';
+import { useAuth } from './useAuth';
 
 // Schützt eine Route: ist niemand eingeloggt, leite ich auf die
 // Startseite um, statt die geschützte Seite überhaupt zu rendern.
-export function ProtectedRoute({ children }: { children: ReactNode }) {
+export function ProtectedRoute({ children }: Readonly<{ children: ReactNode }>) {
     const { username, loading } = useAuth();
 
     // Während die erste /api/auth/me-Abfrage noch läuft, weiß ich noch

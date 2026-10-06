@@ -4,7 +4,6 @@ import org.dahllab.opsservicedoc.config.GlpiConfig;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

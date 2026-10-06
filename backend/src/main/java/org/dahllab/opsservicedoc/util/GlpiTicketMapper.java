@@ -5,6 +5,7 @@ import org.dahllab.opsservicedoc.model.Ticket;
 import org.dahllab.opsservicedoc.model.TicketStatus;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
@@ -20,6 +21,14 @@ public class GlpiTicketMapper {
     private static final DateTimeFormatter GLPI_DATE_FORMAT=
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    // GLPI liefert im Standard-Ticket-Objekt keinen lesbaren Techniker-Namen,
+    // nur eine User-ID (users_id_recipient bzw. eine separate Zuweisungs-
+    // Tabelle). Eine echte Namensaufloesung wuerde einen zusaetzlichen
+    // API-Aufruf pro Ticket bedeuten, das hebe ich fuer einen spaeteren
+    // Ausbauschritt auf (YAGNI: erst bauen, wenn der MVP es wirklich braucht).
+    // Bis dahin steht hier eine feste Konstante statt einer Methode.
+    private static final String TECHNIKER_NICHT_ZUGEWIESEN = "Nicht zugewiesen";
+
     // Privater Konstruktor: reine Utility-Klasse, nur statische Methoden,
     // soll nicht instanziiert werden.
     private GlpiTicketMapper() {
@@ -33,7 +42,7 @@ public class GlpiTicketMapper {
                 extractTitel(glpiTicket),
                 extractBeschreibung(glpiTicket),
                 extractStatus(glpiTicket),
-                extractTechniker(glpiTicket),
+                TECHNIKER_NICHT_ZUGEWIESEN,
                 // SzenarioTyp ist ein Feld, das GLPI selbst nicht kennt, es gehört
                 // zu meiner eigenen IPD-Fachlogik. Laut aktuellem Projekt-Scope
                 // gibt es bisher nur EIN Szenario (SERVER_WARTUNG), deshalb hier
@@ -87,28 +96,20 @@ public class GlpiTicketMapper {
         };
     }
 
-    // GLPI liefert im Standard-Ticket-Objekt keinen lesbaren Techniker-Namen,
-    // nur eine User-ID (users_id_recipient bzw. eine separate Zuweisungs-
-    // Tabelle). Eine echte Namensauflösung würde einen zusätzlichen
-    // API-Aufruf pro Ticket bedeuten, das hebe ich für einen späteren
-    // Ausbauschritt auf (YAGNI: erstbauen, wenn der MVP es wirklich braucht).
-    private static String extractTechniker(Map<String, Object> glpiTicket) {
-        return "Nicht zugewiesen";
-    }
-
     // Wandelt das GLPI-Datumsformat in ein LocalDataTime um.
     // Fällt bei fehlendem oder unlesbarem Datum auf "jetzt" zurück,
     // statt den ganzen Import wegen eines einzelnen Tickets abzubrechen.
     private static LocalDateTime extractErstelltAm(Map<String, Object> glpiTicket) {
         Object date = glpiTicket.get("date");
         if (date == null) {
-            return LocalDateTime.now();
+            return LocalDateTime.now(ZoneId.systemDefault());
         }
 
         try {
             return LocalDateTime.parse(date.toString(), GLPI_DATE_FORMAT);
-        } catch (Exception e) {
-            return LocalDateTime.now();
+        } catch (Exception _) {
+            // Unbenannte Variable "_": die Ausnahme selbst brauche ich nicht, ich falle nur auf "jetzt" zurueck.
+            return LocalDateTime.now(ZoneId.systemDefault());
         }
 
     }

@@ -12,6 +12,10 @@ import java.util.NoSuchElementException;
 @Service
 public class ChecklistTemplateService {
 
+    // Gemeinsamer Teil der "nicht gefunden"-Fehlermeldungen: ein Literal statt vieler Kopien
+    private static final String NICHT_GEFUNDEN = " nicht gefunden";
+    private static final String VORLAGE_MIT_ID = "Checklisten-Vorlage mit ID ";
+
     private final ChecklistTemplateRepository checklistTemplateRepository;
 
     public ChecklistTemplateService(ChecklistTemplateRepository checklistTemplateRepository) {
@@ -28,7 +32,7 @@ public class ChecklistTemplateService {
     // GET /api/checklist-templates/{id} - liefert genau eine Vorlage.
     public ChecklistTemplateDto getTemplateById(String id) {
         ChecklistTemplate result = checklistTemplateRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException(VORLAGE_MIT_ID + id + NICHT_GEFUNDEN));
         return ChecklistTemplateMapper.toDto(result);
     }
 
@@ -54,7 +58,7 @@ public class ChecklistTemplateService {
     // nachträglich zur Standard-Vorlage machen.
     public ChecklistTemplateDto updateTemplate(String id, ChecklistTemplateDto templateDto) {
         ChecklistTemplate bestehendeTemplate = checklistTemplateRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException(VORLAGE_MIT_ID + id + NICHT_GEFUNDEN));
 
         ChecklistTemplate aktualisierteTemplate = new ChecklistTemplate(
                 bestehendeTemplate.getId(),
@@ -74,7 +78,7 @@ public class ChecklistTemplateService {
     // damit ich den standard-Wert überhaupt prüfen kann.
     public void deleteTemplate(String id) {
         ChecklistTemplate template = checklistTemplateRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Checklisten-Vorlage mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException(VORLAGE_MIT_ID + id + NICHT_GEFUNDEN));
 
         if (template.isStandard()) {
             throw new IllegalStateException(

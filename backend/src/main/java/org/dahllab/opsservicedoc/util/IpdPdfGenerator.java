@@ -23,12 +23,12 @@ import java.io.ByteArrayOutputStream;
 // zur Freigabe schicke. Ich nutze dafür OpenPDF (Fork von iText 2) -
 // die Document/Paragraph/PdfPTable-API reicht völlig aus, um ein
 // optisch aufgewertetes Dokument zu bauen (farbiger Kopfbereich,
-// Metadaten-Tabelle, Trennlinien, Fußzeile mit Seitenzahl), ohne mit
+// Metadaten-Tabelle, Fußzeile mit Seitenzahl), ohne mit
 // PDF-Grafikbefehlen auf niedriger Ebene zu arbeiten.
 //
 // Farbgebung orientiert sich an der DahlLab-Designsprache (Navy +
-// Türkis/Cyan), damit IPD-Generator und Operations Hub optisch
-// zusammengehören.
+// dunkles Blau), damit IPD-Generator und Operations Hub optisch
+// zusammengehören. Cyan ist im Druck zu grell, daher nutze ich es hier nicht.
 //
 // WICHTIG: Die interne Checkliste taucht hier bewusst NICHT im Detail
 // auf, nur das Ergebnis als ein Satz ("Qualitätssicherung
@@ -39,7 +39,9 @@ public class IpdPdfGenerator {
     // Feste Farbpalette, damit ich sie nicht an jeder Stelle neu
     // anlegen muss und überall exakt dieselben Töne verwende.
     private static final Color NAVY = new Color(10, 25, 49);
-    private static final Color CYAN = new Color(0, 188, 212);
+    // Dunkles Blau für die (unterstrichenen) Überschriften - ruhiger als
+    // Cyan und auf Papier gut lesbar.
+    private static final Color DUNKELBLAU = new Color(23, 48, 92);
     private static final Color HELLGRAU = new Color(240, 240, 240);
 
     private IpdPdfGenerator() {
@@ -59,7 +61,7 @@ public class IpdPdfGenerator {
 
             Font titelFont = FontFactory.getFont(FontFactory.HELVETICA, 20, Font.BOLD, Color.WHITE);
             Font untertitelFont = FontFactory.getFont(FontFactory.HELVETICA, 11, Font.NORMAL, Color.WHITE);
-            Font abschnittFont = FontFactory.getFont(FontFactory.HELVETICA, 13, Font.BOLD, CYAN);
+            Font abschnittFont = FontFactory.getFont(FontFactory.HELVETICA, 13, Font.BOLD | Font.UNDERLINE, DUNKELBLAU);
             Font textFont = FontFactory.getFont(FontFactory.HELVETICA, 11, Font.NORMAL, Color.BLACK);
             Font labelFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Font.BOLD, NAVY);
             Font wertFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Font.NORMAL, Color.BLACK);
@@ -164,8 +166,8 @@ public class IpdPdfGenerator {
         tabelle.addCell(wertZelle);
     }
 
-    // Fügt einen einzelnen Fachabschnitt hinzu: türkise Überschrift,
-    // dünne Cyan-Trennlinie darunter, dann der eigentliche Text. Leere,
+    // Fügt einen einzelnen Fachabschnitt hinzu: dunkelblaue, unterstrichene
+    // Überschrift, dann der eigentliche Text. Leere,
     // noch nicht ausgefüllte Abschnitte lasse ich komplett weg, damit
     // der Kunde kein halbfertiges Dokument mit leeren Überschriften
     // bekommt.
@@ -178,29 +180,10 @@ public class IpdPdfGenerator {
         Paragraph ueberschriftAbsatz = new Paragraph(ueberschrift, abschnittFont);
         ueberschriftAbsatz.setSpacingBefore(10);
         pdfDokument.add(ueberschriftAbsatz);
-        pdfDokument.add(zeichneTrennlinie());
 
         Paragraph textAbsatz = new Paragraph(inhalt, textFont);
         textAbsatz.setSpacingBefore(4);
         pdfDokument.add(textAbsatz);
-    }
-
-    // Zeichnet eine dünne, türkisfarbene Trennlinie unter jeder
-    // Abschnittsüberschrift - technisch wieder eine 1x1-Tabelle mit
-    // sehr geringer fester Höhe statt eines echten Linienobjekts, das
-    // hält den Code einheitlich zur Kopfbereich-Tabelle oben, statt
-    // eine zweite Technik dafür einzuführen.
-    private static PdfPTable zeichneTrennlinie() {
-        PdfPTable linie = new PdfPTable(1);
-        linie.setWidthPercentage(100);
-
-        PdfPCell zelle = new PdfPCell();
-        zelle.setFixedHeight(1.5f);
-        zelle.setBackgroundColor(CYAN);
-        zelle.setBorder(Rectangle.NO_BORDER);
-
-        linie.addCell(zelle);
-        return linie;
     }
 
     private static Paragraph neueLeerzeile() {

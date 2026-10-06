@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { fetchCurrentUser, holeCsrfToken } from '../api/api';
+import { AuthContext, type AuthContextValue } from './useAuth';
 
 // URL, unter der mein Backend läuft. Für den GitHub-Login und das
 // Logout brauche ich eine ECHTE Browser-Weiterleitung (kein fetch),
@@ -8,16 +9,7 @@ import { fetchCurrentUser, holeCsrfToken } from '../api/api';
 // Im Dev-Betrieb läuft das Backend fest auf Port 8080.
 const BACKEND_URL = 'http://localhost:8080';
 
-interface AuthContextValue {
-    username: string | null;
-    loading: boolean;
-    loginUrl: string;
-    logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const [username, setUsername] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -36,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // fetch-Aufrufs, weil der Browser nach dem Logout per Redirect auf
     // logoutSuccessUrl (siehe SecurityConfig) weitergeleitet wird - das
     // funktioniert nur mit einer echten Formular-Navigation, nicht mit fetch.
-    function logout() {
+    const logout = useCallback(() => {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `${BACKEND_URL}/logout`;
@@ -52,25 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         document.body.appendChild(form);
         form.submit();
-    }
+    }, []);
 
-    const value: AuthContextValue = {
-        username,
-        loading,
-        loginUrl: `${BACKEND_URL}/oauth2/authorization/github`,
-        logout,
-    };
+    // useMemo: das value-Objekt wird nur neu erzeugt, wenn sich username/loading/logout
+    // wirklich ändern. Sonst bekäme JEDE Komponente, die useAuth() nutzt, bei jedem
+    // Rendern ein "neues" Objekt und würde unnötig neu rendern.
+    const value = useMemo<AuthContextValue>(
+        () => ({
+            username,
+            loading,
+            loginUrl: `${BACKEND_URL}/oauth2/authorization/github`,
+            logout,
+        }),
+        [username, loading, logout],
+    );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-// Eigener Hook statt useContext(AuthContext) überall, damit ich an
-// zentraler Stelle prüfen kann, ob der Hook auch wirklich innerhalb
-// eines AuthProvider verwendet wird.
-export function useAuth(): AuthContextValue {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth muss innerhalb eines AuthProvider verwendet werden');
-    }
-    return context;
 }

@@ -59,7 +59,7 @@ public class TicketController {
     // auf titel im Ticket-Model).
     // @ResponseStatus(CREATED): gibt korrekt 201 statt dem Standard-200
     // zurück, wie es sich für einen erfolgreichen POST gehört
-    // (REST-Konvention, wie auch schon bei deinem Todo-Backend gemacht).
+    // (REST-Konvention, wie bei meinen früheren Backends im Bootcamp).
     @Operation(summary = "Ein neues Ticket manuell anlegen")
     @ApiResponse(responseCode = "201", description = "Ticket wurde erstellt",
             content = @Content(schema = @Schema(implementation = TicketDto.class)))

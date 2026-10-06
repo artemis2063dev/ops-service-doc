@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Form, Spinner, Table } from 'react-bootstrap';
+import HudPanel from '../components/HudPanel';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/api';
 import { formatiereDatum, ipdStatusBadgeVariante } from '../utils/formatierung';
@@ -49,9 +50,30 @@ export function IpdGeneratorPage() {
         }
     }
 
+    // Erstes Laden: Anfrage direkt im Effect, State wird nur im Callback gesetzt, wenn
+    // die Daten ankommen. `abgebrochen` schützt davor, State nach dem Verlassen der
+    // Seite zu setzen.
     useEffect(() => {
-        void ladeDaten();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        let abgebrochen = false;
+        Promise.all([api.get<IpdDocumentDto[]>('/api/ipd'), api.get<TicketDto[]>('/api/tickets')])
+            .then(([geladeneDokumente, geladeneTickets]) => {
+                if (abgebrochen) return;
+                setDokumente(geladeneDokumente);
+                setTickets(geladeneTickets);
+                // Erstbefüllung der Auswahl mit dem ersten Ticket
+                setTicketAuswahl((bisher) => bisher || geladeneTickets[0]?.id || '');
+            })
+            .catch((error) => {
+                if (abgebrochen) return;
+                setFehler('Daten konnten nicht geladen werden.');
+                console.error(error);
+            })
+            .finally(() => {
+                if (!abgebrochen) setLoading(false);
+            });
+        return () => {
+            abgebrochen = true;
+        };
     }, []);
 
     function ticketTitel(ticketId: string): string {
@@ -134,7 +156,8 @@ export function IpdGeneratorPage() {
                 // Erzeugen-Bereich bewusst als eigene, auffällige Box oben
                 // auf der Seite - das ist die Haupthandlung dieser Seite,
                 // das Scrollen durch alte Dokumente kommt erst danach.
-                <div className="d-flex align-items-end gap-3 mb-4 p-3 border rounded bg-light">
+                <HudPanel title="Neuen Entwurf erzeugen" className="mb-4">
+<div className="d-flex flex-wrap align-items-end gap-3">
                     <Form.Group style={{ maxWidth: 320 }}>
                         <Form.Label>Ticket</Form.Label>
                         <Form.Select value={ticketAuswahl} onChange={(e) => setTicketAuswahl(e.target.value)}>
@@ -149,16 +172,16 @@ export function IpdGeneratorPage() {
                         {erzeugeLaeuft ? 'Erzeuge…' : 'Entwurf aus Ticket erzeugen'}
                     </Button>
                 </div>
+                </HudPanel>
             )}
 
-            <h2 className="h5 mb-3">Vorhandene IPD-Dokumente</h2>
-
             {dokumente.length === 0 ? (
-                <Alert variant="light" className="text-center text-muted">
+                <Alert variant="dark" className="text-center">
                     Noch keine IPD-Dokumente vorhanden.
                 </Alert>
             ) : (
-                <Table striped hover responsive>
+                <HudPanel title="Vorhandene IPD-Dokumente">
+<Table hover responsive className="hud-table">
                     <thead>
                     <tr>
                         <th>Titel</th>
@@ -181,18 +204,22 @@ export function IpdGeneratorPage() {
                             </td>
                             <td>{formatiereDatum(dokument.erstelltAm)}</td>
                             <td>{formatiereDatum(dokument.aktualisiertAm)}</td>
-                            <td className="d-flex gap-2">
-                                <Button variant="outline-secondary" size="sm" onClick={() => navigate(`/ipd/${dokument.id}`)}>
-                                    Öffnen
-                                </Button>
-                                <Button variant="outline-danger" size="sm" onClick={() => handleLoeschen(dokument)}>
-                                    Löschen
-                                </Button>
+                            <td>
+                                {/* Flex sitzt im div, damit die td eine echte Tabellenzelle bleibt und die Linie durchgeht */}
+                                <div className="d-flex gap-2">
+                                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(`/ipd/${dokument.id}`)}>
+                                        Öffnen
+                                    </Button>
+                                    <Button variant="outline-danger" size="sm" onClick={() => handleLoeschen(dokument)}>
+                                        Löschen
+                                    </Button>
+                                </div>
                             </td>
                         </tr>
                     ))}
                     </tbody>
                 </Table>
+</HudPanel>
             )}
         </div>
     );

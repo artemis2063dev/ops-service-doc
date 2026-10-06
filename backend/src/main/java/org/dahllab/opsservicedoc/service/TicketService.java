@@ -10,6 +10,7 @@ import org.dahllab.opsservicedoc.util.TicketMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -73,7 +74,7 @@ public class TicketService {
                 neuesTicket.status(),
                 neuesTicket.techniker(),
                 neuesTicket.szenarioTyp(),
-                LocalDateTime.now()
+                LocalDateTime.now(ZoneId.systemDefault())
         );
 
         Ticket gespeichertesTicket = ticketRepository.save(ticket);
@@ -157,10 +158,10 @@ public class TicketService {
         return List.of(
                 new Ticket(null, "GLPI-1001", "Server Enterprise-01 Wartung",
                         "Geplantes Patching des vSphere-Clusters außerhalb der Betriebszeiten.",
-                        TicketStatus.NEU, "M. Scott", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now()),
+                        TicketStatus.NEU, "M. Scott", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now(ZoneId.systemDefault())),
                 new Ticket(null, "GLPI-1002", "Backup-Check Enterprise-02",
                         "Wöchentliche Kontrolle der Backup-Jobs.",
-                        TicketStatus.IN_BEARBEITUNG, "N. Uhura", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now())
+                        TicketStatus.IN_BEARBEITUNG, "N. Uhura", SzenarioTyp.SERVER_WARTUNG, LocalDateTime.now(ZoneId.systemDefault()))
         );
     }
 }

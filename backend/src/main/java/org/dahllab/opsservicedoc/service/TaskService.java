@@ -8,6 +8,7 @@ import org.dahllab.opsservicedoc.util.TaskMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -54,7 +55,7 @@ public class TaskService {
                 neuerTask.ticketId(),
                 neuerTask.thema(),
                 neuerTask.naechsteSchritte(),
-                LocalDateTime.now(),
+                LocalDateTime.now(ZoneId.systemDefault()),
                 neuerTask.zieldatum(),
                 null,
                 neuerTask.status() != null ? neuerTask.status() : TaskStatus.OFFEN
@@ -81,7 +82,7 @@ public class TaskService {
         if (aktualisierterTask.status() == TaskStatus.ERLEDIGT) {
             erledigtAm = bestehenderTask.getErledigtAm() != null
                     ? bestehenderTask.getErledigtAm()
-                    : LocalDateTime.now();
+                    : LocalDateTime.now(ZoneId.systemDefault());
         } else {
             erledigtAm = null;
         }

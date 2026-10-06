@@ -22,3 +22,6 @@ frontend/*.local
 #versehentlich im Projekt-Hauptordner entstanden (npm install bzw. Maven-Lauf im falschen Ordner)
 /node_modules
 /target
+
+#Ausdruck-PDFs fuer den Druck, nicht ins Repo
+ausdruck/

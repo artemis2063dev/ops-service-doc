@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap';
+import HudPanel from '../components/HudPanel';
 import { api, ApiError } from '../api/api';
 import { formatiereDatum, formatiereZieldatum, taskStatusBadgeVariante } from '../utils/formatierung';
 import {
@@ -67,14 +68,29 @@ export function TaskPlannerPage() {
 
     // Beim ersten Rendern der Seite lade ich einmalig die Ticket-Liste
     // (fürs Auswahlfeld/die Anzeige) UND die ungefilterte Task-Liste.
-    // Das eslint-disable brauche ich, weil die Regel "exhaustive-deps"
-    // sonst ladeTasks als fehlende Abhängigkeit anmeckert - das ist hier
-    // aber gewollt, ich will NUR beim ersten Laden der Seite einmal
-    // feuern, nicht bei jeder Neudefinition von ladeTasks.
+    // Die Anfragen stehen direkt im Effect: State wird nur im Callback gesetzt,
+    // wenn die Daten ankommen (nicht synchron im Effect-Start), und `abgebrochen`
+    // schützt davor, State nach dem Verlassen der Seite zu setzen.
     useEffect(() => {
+        let abgebrochen = false;
         api.get<TicketDto[]>('/api/tickets').then(setTickets).catch(console.error);
-        void ladeTasks('');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        api.get<TaskDto[]>('/api/tasks')
+            .then((geladeneTasks) => {
+                if (abgebrochen) return;
+                setTasks(geladeneTasks);
+                setFehler(null);
+            })
+            .catch((error) => {
+                if (abgebrochen) return;
+                setFehler('Tasks konnten nicht geladen werden.');
+                console.error(error);
+            })
+            .finally(() => {
+                if (!abgebrochen) setLoading(false);
+            });
+        return () => {
+            abgebrochen = true;
+        };
     }, []);
 
     // Wird aufgerufen, wenn der Nutzer im Filter-Dropdown ein anderes
@@ -231,7 +247,8 @@ export function TaskPlannerPage() {
             anlegen kann - vorher gab es dafür nur den Button oben am
             Seitenkopf, dessen Bezug zum gerade gefilterten Ticket nicht
             offensichtlich war. */}
-            <Table striped hover responsive>
+            <HudPanel title="Aufgaben">
+<Table hover responsive className="hud-table">
                 <thead>
                 <tr>
                     <th>Thema</th>
@@ -282,19 +299,23 @@ export function TaskPlannerPage() {
                             </td>
                             <td>{formatiereDatum(task.erfasstAm)}</td>
                             <td>{formatiereDatum(task.erledigtAm)}</td>
-                            <td className="d-flex gap-2">
-                                <Button variant="outline-secondary" size="sm" onClick={() => handleBearbeiten(task)}>
-                                    Bearbeiten
-                                </Button>
-                                <Button variant="outline-danger" size="sm" onClick={() => handleLoeschen(task)}>
-                                    Löschen
-                                </Button>
+                            <td>
+                                {/* Flex sitzt im div, damit die td eine echte Tabellenzelle bleibt und die Linie durchgeht */}
+                                <div className="d-flex gap-2">
+                                    <Button variant="outline-secondary" size="sm" onClick={() => handleBearbeiten(task)}>
+                                        Bearbeiten
+                                    </Button>
+                                    <Button variant="outline-danger" size="sm" onClick={() => handleLoeschen(task)}>
+                                        Löschen
+                                    </Button>
+                                </div>
                             </td>
                         </tr>
                     ))
                 )}
                 </tbody>
             </Table>
+</HudPanel>
 
             <Modal show={modalOffen} onHide={() => setModalOffen(false)}>
                 <Modal.Header closeButton>

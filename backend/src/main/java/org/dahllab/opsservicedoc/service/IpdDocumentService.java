@@ -19,12 +19,16 @@ import org.dahllab.opsservicedoc.util.IpdPdfGenerator;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @Service
 public class IpdDocumentService {
+
+    // Gemeinsamer Teil der "nicht gefunden"-Fehlermeldungen: ein Literal statt vieler Kopien
+    private static final String NICHT_GEFUNDEN = " nicht gefunden";
 
     private final IpdDocumentRepository ipdDocumentRepository;
     private final TicketRepository ticketRepository;
@@ -62,7 +66,7 @@ public class IpdDocumentService {
     // GET /api/ipd/{id} - liefert genau ein IPD-Dokument.
     public IpdDocumentDto getIpdDocumentById(String id) {
         IpdDocument result = ipdDocumentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("IPD-Dokument mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException("IPD-Dokument mit ID " + id + NICHT_GEFUNDEN));
         return IpdDocumentMapper.toDto(result);
     }
 
@@ -76,7 +80,7 @@ public class IpdDocumentService {
     // zunächst leer und müssen von mir per PUT ergänzt werden.
     public IpdDocumentDto createIpdDocumentFromTicket(String ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new NoSuchElementException("Ticket mit ID " + ticketId + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException("Ticket mit ID " + ticketId + NICHT_GEFUNDEN));
 
         IpdDocument neuesDokument = new IpdDocument(
                 null,                                                  // id
@@ -101,8 +105,8 @@ public class IpdDocumentService {
                 null,                                                  // risikenUndAnnahmen
                 null,                                                  // rollbackPlan
                 ermittleQualitaetssicherungAbgeschlossen(ticketId),   // qualitaetssicherungAbgeschlossen
-                LocalDateTime.now(),                                   // erstelltAm
-                LocalDateTime.now()                                    // aktualisiertAm
+                LocalDateTime.now(ZoneId.systemDefault()),                                   // erstelltAm
+                LocalDateTime.now(ZoneId.systemDefault())                                    // aktualisiertAm
         );
 
         IpdDocument result = ipdDocumentRepository.save(neuesDokument);
@@ -121,7 +125,7 @@ public class IpdDocumentService {
     // abgeschlossen wurden.
     public IpdDocumentDto updateIpdDocument(String id, IpdDocumentDto ipdDocumentDto) {
         IpdDocument bestehendesDokument = ipdDocumentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("IPD-Dokument mit ID " + id + " nicht gefunden"));
+                .orElseThrow(() -> new NoSuchElementException("IPD-Dokument mit ID " + id + NICHT_GEFUNDEN));
 
         IpdDocument aktualisiertesDokument = new IpdDocument(
                 id,                                                                            // id
@@ -147,7 +151,7 @@ public class IpdDocumentService {
                 ipdDocumentDto.rollbackPlan(),                                                 // rollbackPlan
                 ermittleQualitaetssicherungAbgeschlossen(bestehendesDokument.getTicketId()),  // qualitaetssicherungAbgeschlossen
                 bestehendesDokument.getErstelltAm(),                                           // erstelltAm bleibt unverändert
-                LocalDateTime.now()                                                            // aktualisiertAm
+                LocalDateTime.now(ZoneId.systemDefault())                                                            // aktualisiertAm
         );
 
         IpdDocument result = ipdDocumentRepository.save(aktualisiertesDokument);
@@ -157,7 +161,7 @@ public class IpdDocumentService {
     // DELETE /api/ipd/{id} - löscht ein IPD-Dokument.
     public void deleteIpdDocument(String id) {
         if (!ipdDocumentRepository.existsById(id)) {
-            throw new NoSuchElementException("IPD-Dokument mit ID " + id + " nicht gefunden");
+            throw new NoSuchElementException("IPD-Dokument mit ID " + id + NICHT_GEFUNDEN);
         }
         ipdDocumentRepository.deleteById(id);
     }
