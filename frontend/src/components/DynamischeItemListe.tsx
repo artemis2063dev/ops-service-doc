@@ -36,10 +36,12 @@ export function DynamischeItemListe({
         <>
             {werte.map((wert, index) => (
                 <div
-                    // NOSONAR: Index als key ist hier korrekt - die Einträge sind reine
-                    // Textfelder ohne eigene ID, werden nie umsortiert und der Text liegt
-                    // im State der aufrufenden Seite (controlled input).
-                    key={index}
+                    // Index als key ist hier korrekt - die Einträge sind reine Textfelder
+                    // ohne eigene ID, werden nie umsortiert und der Text liegt im State der
+                    // aufrufenden Seite (controlled input).
+                    // Das NOSONAR muss in derselben Zeile wie der key stehen, sonst
+                    // greift die Unterdrückung in SonarCloud nicht.
+                    key={index} // NOSONAR
                     className="d-flex gap-2 mb-2"
                 >
                     <Form.Control

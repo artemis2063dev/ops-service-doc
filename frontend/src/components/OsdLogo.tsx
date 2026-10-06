@@ -11,7 +11,8 @@ interface OsdLogoProps {
     compact?: boolean
 }
 
-export function OsdLogo({ compact = false }: OsdLogoProps) {
+// Readonly<...> markiert die Props als schreibgeschützt - ich darf sie in der Komponente nicht ändern
+export function OsdLogo({ compact = false }: Readonly<OsdLogoProps>) {
     return (
         <div className="osd-logo">
             {/* viewBox legt das interne Koordinatensystem fest (100 x 100),

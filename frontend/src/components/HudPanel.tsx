@@ -30,7 +30,7 @@ export default function HudPanel({
                                      footerLink,
                                      tone = 'default',
                                      className = '',
-                                 }: HudPanelProps) {
+                                 }: Readonly<HudPanelProps>) {
     return (
         // Äußeres Element = die "Linie": Es hat die Linienfarbe als Hintergrund und ist
         // 1 px größer als das innere. Der sichtbare Rand ist also nur der Streifen dazwischen.
